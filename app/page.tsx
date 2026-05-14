@@ -1,5 +1,6 @@
 "use client"
 
+import { supabase } from "@/lib/supabase"
 import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import {
@@ -129,17 +130,32 @@ export default function StarWarsTracker() {
   const [filter, setFilter] = useState("all")
   const [selectedNotes, setSelectedNotes] = useState<any>(null)
 
-  useEffect(() => {
-    const saved = localStorage.getItem("sw-tracker")
+useEffect(() => {
+  async function loadProgress() {
+    const { data } = await supabase
+      .from("progress")
+      .select("*")
 
-    if (saved) {
-      setEntries(JSON.parse(saved))
-    }
-  }, [])
+    if (!data) return
 
-  useEffect(() => {
-    localStorage.setItem("sw-tracker", JSON.stringify(entries))
-  }, [entries])
+    setEntries((prev) =>
+      prev.map((entry) => {
+        const saved = data.find((d) => d.id === entry.id)
+
+        if (!saved) return entry
+
+        return {
+          ...entry,
+          watched: saved.watched,
+          watchedAt: saved.watched_at,
+          notes: saved.notes,
+        }
+      })
+    )
+  }
+
+  loadProgress()
+}, [])
 
   const totalRuntime = useMemo(
     () => entries.reduce((acc, item) => acc + item.runtime, 0),
@@ -181,6 +197,12 @@ export default function StarWarsTracker() {
       prev.map((entry) => {
         if (entry.id === id) {
           const watched = !entry.watched
+          supabase.from("progress").upsert({
+            id: entry.id,
+            watched,
+            watched_at: watched ? new Date().toISOString() : null,
+            notes: entry.notes,
+            })
 
           return {
             ...entry,
