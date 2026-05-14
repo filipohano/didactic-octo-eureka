@@ -18,6 +18,9 @@ import {
   Download,
   Upload,
 } from "lucide-react"
+import { useRef } from "react"
+
+const saveTimeout = useRef<NodeJS.Timeout | null>(null)
 
 type Entry = {
   id: number
@@ -49,30 +52,25 @@ function formatRuntime(minutes?: number | null) {
 }
 
 function getStreak(entries: Entry[]) {
-  const watched = entries
-    .filter((e) => e.watchedAt)
-    .sort(
-      (a, b) =>
-        new Date(b.watchedAt!).getTime() -
-        new Date(a.watchedAt!).getTime()
-    )
+  const days = [...new Set(
+    entries
+      .filter(e => e.watchedAt)
+      .map(e => new Date(e.watchedAt!).toISOString().split("T")[0])
+  )].sort().reverse()
 
-  if (!watched.length) return 0
+  if (!days.length) return 0
 
   let streak = 1
 
-  for (let i = 1; i < watched.length; i++) {
-    const prev = new Date(watched[i - 1].watchedAt!)
-    const curr = new Date(watched[i].watchedAt!)
+  for (let i = 1; i < days.length; i++) {
+    const prev = new Date(days[i - 1])
+    const curr = new Date(days[i])
 
     const diff =
       (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24)
 
-    if (diff <= 1.5) {
-      streak++
-    } else {
-      break
-    }
+    if (diff === 1) streak++
+    else break
   }
 
   return streak
@@ -207,20 +205,27 @@ export default function StarWarsTracker() {
     )
   }
 
-  function updateNote(id: number, note: string) {
-    setEntries((prev) =>
-      prev.map((entry) => {
-        if (entry.id === id) {
-          return {
-            ...entry,
-            notes: note,
-          }
-        }
-
-        return entry
-      })
+function updateNote(id: number, note: string) {
+  setEntries((prev) =>
+    prev.map((entry) =>
+      entry.id === id ? { ...entry, notes: note } : entry
     )
-  }
+  )
+
+  if (saveTimeout.current) clearTimeout(saveTimeout.current)
+
+  saveTimeout.current = setTimeout(async () => {
+    const entry = entries.find((e) => e.id === id)
+    if (!entry) return
+
+    await supabase.from("progress").upsert({
+      id,
+      watched: entry.watched,
+      watched_at: entry.watchedAt,
+      notes: note,
+    })
+  }, 500)
+}
 
   function exportProgress() {
     const blob = new Blob([JSON.stringify(entries, null, 2)], {
