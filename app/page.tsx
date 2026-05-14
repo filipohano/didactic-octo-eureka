@@ -101,6 +101,8 @@ export default function StarWarsTracker() {
         .from("progress")
         .select("*")
 
+        console.log(progress)
+
       if (!items) return
 
       const merged: Entry[] = items.map((item: any) => {
