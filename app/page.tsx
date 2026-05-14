@@ -331,49 +331,53 @@ function updateNote(id: number, note: string) {
   })
 
 return (
-  <div className="min-h-screen text-white relative overflow-hidden bg-[#050505]">
+  <div className="min-h-screen bg-gradient-to-b from-black via-zinc-950 to-black text-white overflow-hidden relative">
+    
+    {/* Ambient glow background */}
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,215,0,0.15),transparent_55%)]" />
+    <div className="absolute inset-0 backdrop-blur-3xl opacity-40" />
 
-    {/* background glow */}
-    <div className="absolute inset-0">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,215,0,0.15),transparent_55%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(0,180,255,0.08),transparent_60%)]" />
-      <div className="absolute inset-0 backdrop-blur-[120px]" />
-    </div>
-
-    <div className="relative z-10 max-w-7xl mx-auto px-6 py-10">
+    <div className="relative z-10 max-w-7xl mx-auto px-4 py-10 md:px-8">
 
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
 
         <div>
-          <h1 className="text-6xl md:text-7xl font-black tracking-tight bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 bg-clip-text text-transparent">
+          <h1 className="text-6xl md:text-8xl font-black tracking-tight bg-gradient-to-r from-yellow-300 via-yellow-500 to-amber-300 bg-clip-text text-transparent">
             STAR WARS
           </h1>
-          <p className="text-zinc-400 mt-2">
+          <p className="text-zinc-400 text-lg mt-2 tracking-wide">
             Chronological Marathon Tracker
           </p>
         </div>
 
+        {/* ACTION BAR */}
         <div className="flex gap-3 flex-wrap">
 
           <button
             onClick={exportProgress}
-            className="px-5 py-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition"
+            className="group relative px-5 py-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl hover:border-yellow-400/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
           >
-            <Download size={18} className="inline mr-2" />
-            Export
+            <span className="absolute inset-0 rounded-2xl bg-gradient-to-r from-yellow-500/0 via-yellow-500/10 to-yellow-500/0 opacity-0 group-hover:opacity-100 transition" />
+            <span className="relative flex items-center gap-2">
+              <Download size={18} /> Export
+            </span>
           </button>
 
           <button
             onClick={async () => await syncFromSupabase()}
-            className="px-5 py-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 hover:bg-emerald-500/20 transition"
+            className="group relative px-5 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-400/20 backdrop-blur-xl hover:border-emerald-300/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
           >
-            Save / Sync
+            <span className="absolute inset-0 rounded-2xl bg-emerald-400/10 opacity-0 group-hover:opacity-100 transition" />
+            <span className="relative flex items-center gap-2 text-emerald-200">
+              Save / Sync
+            </span>
           </button>
 
-          <label className="px-5 py-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition cursor-pointer">
-            <Upload size={18} className="inline mr-2" />
-            Import
+          <label className="group relative px-5 py-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl hover:border-yellow-400/40 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
+            <span className="relative flex items-center gap-2">
+              <Upload size={18} /> Import
+            </span>
             <input type="file" className="hidden" onChange={importProgress} />
           </label>
 
@@ -383,120 +387,135 @@ return (
       {/* TOP GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
 
-        {/* MAIN PROGRESS */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-3 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-8"
-        >
+        {/* PROGRESS CARD */}
+        <div className="lg:col-span-3 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-8 shadow-[0_0_80px_-20px_rgba(255,215,0,0.25)]">
 
-          <div className="flex justify-between mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div>
               <p className="text-zinc-400">Overall Progress</p>
-              <h2 className="text-5xl font-black text-yellow-300">{progress}%</h2>
+              <h2 className="text-6xl font-black text-yellow-400">{progress}%</h2>
             </div>
 
             <div className="text-right">
               <p className="text-zinc-400">Watched Runtime</p>
-              <p className="text-xl font-semibold">{formatRuntime(watchedRuntime)}</p>
+              <p className="text-2xl font-bold">{formatRuntime(watchedRuntime)}</p>
             </div>
           </div>
 
-          <div className="h-4 bg-white/5 rounded-full overflow-hidden mb-8">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              className="h-full bg-gradient-to-r from-yellow-400 via-orange-400 to-amber-200"
+          <div className="h-4 w-full rounded-full bg-white/10 overflow-hidden mb-8">
+            <div
+              className="h-full bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-300 transition-all duration-700"
+              style={{ width: `${progress}%` }}
             />
           </div>
 
           {/* STATS */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 
-            <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
-              <div className="text-sm text-zinc-400">Remaining</div>
-              <div className="font-bold">{formatRuntime(remaining)}</div>
+            <div className="glassCard">
+              <Clock3 size={16} className="text-zinc-400" />
+              <p className="text-sm text-zinc-400">Remaining</p>
+              <p className="text-lg font-bold">{formatRuntime(remaining)}</p>
             </div>
 
-            <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
-              <div className="text-sm text-zinc-400">Streak</div>
-              <div className="font-bold">{streak} days</div>
+            <div className="glassCard">
+              <Flame size={16} className="text-orange-400" />
+              <p className="text-sm text-zinc-400">Streak</p>
+              <p className="text-lg font-bold">{streak} days</p>
             </div>
 
-            <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
-              <div className="text-sm text-zinc-400">ETA</div>
-              <div className="font-bold">
+            <div className="glassCard">
+              <Calendar size={16} className="text-blue-300" />
+              <p className="text-sm text-zinc-400">ETA</p>
+              <p className="text-lg font-bold">
                 {estimatedDate ? estimatedDate.toLocaleDateString() : "—"}
-              </div>
+              </p>
             </div>
 
-            <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
-              <div className="text-sm text-zinc-400">Completed</div>
-              <div className="font-bold">
+            <div className="glassCard">
+              <Trophy size={16} className="text-yellow-300" />
+              <p className="text-sm text-zinc-400">Completed</p>
+              <p className="text-lg font-bold">
                 {watchedEntries.length}/{entries.length}
-              </div>
+              </p>
             </div>
 
           </div>
-        </motion.div>
+        </div>
 
         {/* NEXT UP */}
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-yellow-500/10 to-white/5 backdrop-blur-2xl p-6">
 
-          <div className="text-yellow-300 font-bold mb-4 flex items-center gap-2">
-            <Star size={16} /> Next Up
+          <div className="flex items-center gap-2 text-yellow-300 font-bold mb-4">
+            <Star size={18} /> UP NEXT
           </div>
 
           {nextUp && (
             <>
-              <h3 className="font-black text-xl">{nextUp.title}</h3>
+              <h3 className="text-xl font-black mb-2">{nextUp.title}</h3>
+
+              {/* KEEP EPISODE DETAILS (IMPORTANT) */}
+              {(nextUp.season || nextUp.episode) && (
+                <p className="text-zinc-400 text-sm mb-2">
+                  S{nextUp.season ?? "?"}E{nextUp.episode ?? "?"}
+                </p>
+              )}
 
               {nextUp.episode_title && (
-                <p className="text-yellow-200 text-sm mt-1">
+                <p className="text-yellow-200 text-sm mb-2">
                   {nextUp.episode_title}
                 </p>
               )}
 
-              <p className="text-xs text-zinc-400 mt-2">{nextUp.type}</p>
-
-              {nextUp.season && nextUp.episode && (
-                <p className="text-xs text-zinc-500">
-                  Season {nextUp.season} • Episode {nextUp.episode}
-                </p>
-              )}
+              {/* KEEP DESCRIPTION (IMPORTANT — YOU ASKED FOR THIS) */}
+              <p className="text-zinc-400 text-sm leading-relaxed mb-4">
+                {nextUp.description}
+              </p>
 
               <button
                 onClick={() => toggleWatched(nextUp.id)}
-                className="mt-4 w-full py-3 rounded-2xl bg-gradient-to-r from-yellow-400 to-amber-300 text-black font-bold"
+                className="w-full py-3 rounded-2xl bg-yellow-400 text-black font-black hover:bg-yellow-300 transition active:scale-95"
               >
-                Mark Watched
+                MARK AS WATCHED
               </button>
             </>
           )}
         </div>
-
       </div>
 
-      {/* LIST */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      {/* TIMELINE */}
+      <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-6">
 
-        <div className="xl:col-span-2 space-y-4">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-black">Timeline</h2>
+
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search..."
+            className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 outline-none focus:border-yellow-400"
+          />
+        </div>
+
+        <div className="space-y-4">
 
           {filteredEntries.map((entry) => (
-            <motion.div
+            <div
               key={entry.id}
-              layout
-              className="p-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition"
+              className={`rounded-2xl p-5 border backdrop-blur-xl transition hover:scale-[1.01] ${
+                entry.watched
+                  ? "bg-yellow-500/10 border-yellow-400/20"
+                  : "bg-white/5 border-white/10"
+              }`}
             >
 
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-4">
 
                 <div className="flex gap-4">
 
                   <button onClick={() => toggleWatched(entry.id)}>
                     <CheckCircle2
                       className={entry.watched ? "text-yellow-400" : "text-zinc-600"}
-                      size={28}
                     />
                   </button>
 
@@ -504,115 +523,62 @@ return (
 
                     <h3 className="font-bold text-lg">{entry.title}</h3>
 
-                    <div className="text-xs text-zinc-400 mt-1 space-y-1">
-
-                      {entry.episode_title && (
-                        <p className="text-yellow-200">
-                          {entry.episode_title}
-                        </p>
-                      )}
-
-                      <p>
-                        {entry.type}
-                        {entry.runtime ? ` • ${formatRuntime(entry.runtime)}` : ""}
+                    {/* KEEP EPISODE INFO */}
+                    {(entry.season || entry.episode) && (
+                      <p className="text-zinc-500 text-sm">
+                        S{entry.season ?? "?"}E{entry.episode ?? "?"}
                       </p>
+                    )}
 
-                      {entry.season && entry.episode && (
-                        <p>
-                          Season {entry.season} • Episode {entry.episode}
-                        </p>
-                      )}
+                    <p className="text-zinc-400 text-sm mt-2">
+                      {entry.description}
+                    </p>
 
-                      {entry.watchedAt && (
-                        <p>
-                          Watched {new Date(entry.watchedAt).toLocaleString()}
-                        </p>
-                      )}
-
-                    </div>
+                    {entry.watchedAt && (
+                      <p className="text-xs text-zinc-500 mt-2">
+                        Watched {new Date(entry.watchedAt).toLocaleString()}
+                      </p>
+                    )}
 
                   </div>
-
                 </div>
 
-                {/* ACTIONS */}
-                <div className="flex gap-2 items-start">
-
+                {/* KEEP UNDO BUTTON */}
+                {entry.watched && (
                   <button
-                    onClick={() => setSelectedNotes(entry)}
-                    className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-sm"
+                    onClick={() => toggleWatched(entry.id)}
+                    className="text-xs px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
                   >
-                    Notes
+                    Undo
                   </button>
-
-                  {/* ✅ UNDO BUTTON BACK */}
-                  {entry.watched && (
-                    <button
-                      onClick={() => toggleWatched(entry.id)}
-                      className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-sm"
-                    >
-                      Undo
-                    </button>
-                  )}
-
-                </div>
+                )}
 
               </div>
-
-            </motion.div>
+            </div>
           ))}
 
         </div>
-
-        {/* ACTIVITY */}
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-
-          <h2 className="font-black text-xl mb-4">Recent Activity</h2>
-
-          <div className="space-y-3">
-            {watchedEntries.slice().reverse().slice(0, 6).map((e) => (
-              <div key={e.id} className="border-b border-white/5 pb-3">
-                <p className="font-semibold">{e.title}</p>
-                <p className="text-xs text-zinc-500">
-                  {e.watchedAt && new Date(e.watchedAt).toLocaleString()}
-                </p>
-              </div>
-            ))}
-          </div>
-
-        </div>
-
       </div>
-
-      {/* NOTES MODAL */}
-      {selectedNotes && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xl flex items-center justify-center p-4 z-50">
-
-          <div className="w-full max-w-xl rounded-3xl bg-black/70 border border-white/10 p-6">
-
-            <h2 className="text-xl font-black mb-4">
-              Notes — {selectedNotes.title}
-            </h2>
-
-            <textarea
-              value={selectedNotes.notes}
-              onChange={(e) => updateNote(selectedNotes.id, e.target.value)}
-              className="w-full h-40 rounded-2xl bg-white/5 border border-white/10 p-4"
-            />
-
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={() => setSelectedNotes(null)}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20"
-              >
-                Close
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
     </div>
+
+    {/* small reusable style */}
+    <style jsx>{`
+      .glassCard {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px;
+        padding: 14px;
+        backdrop-filter: blur(20px);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        transition: 0.2s;
+      }
+
+      .glassCard:hover {
+        transform: translateY(-2px);
+        border-color: rgba(255,215,0,0.3);
+      }
+    `}</style>
   </div>
 )}
