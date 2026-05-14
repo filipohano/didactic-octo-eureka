@@ -20,8 +20,6 @@ import {
 } from "lucide-react"
 import { useRef } from "react"
 
-const saveTimeout = useRef<NodeJS.Timeout | null>(null)
-
 type Entry = {
   id: number
   title: string
@@ -81,6 +79,7 @@ export default function StarWarsTracker() {
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("all")
   const [selectedNotes, setSelectedNotes] = useState<Entry | null>(null)
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [progressData, setProgressData] = useState<ReturnType<
     typeof calculateProgress
