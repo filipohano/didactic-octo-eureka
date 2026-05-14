@@ -527,7 +527,9 @@ export default function StarWarsTracker() {
                       <div>
                         <p className="font-semibold">{entry.title}</p>
                         <p className="text-zinc-500 text-sm">
-                          {new Date(entry.watchedAt).toLocaleString()}
+                          {entry.watchedAt
+                            ? new Date(entry.watchedAt).toLocaleString()
+                            : "Not watched"}  
                         </p>
                       </div>
 
