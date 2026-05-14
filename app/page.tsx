@@ -260,6 +260,7 @@ async function syncFromSupabase() {
   })
 
   setEntries(merged)
+  console.log("PROGRESS RAW:", progress)
 }
 
 function updateNote(id: number, note: string) {
