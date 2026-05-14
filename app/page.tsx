@@ -16,7 +16,19 @@ import {
   Upload,
 } from "lucide-react"
 
-const INITIAL_DATA = [
+type Entry = {
+  id: number
+  title: string
+  type: string
+  runtime: number
+  watched: boolean
+  watchedAt: string | null
+  notes: string
+  group: string
+  description: string
+}
+
+const INITIAL_DATA: Entry[] = [
   {
     id: 1,
     title: "Episode I — The Phantom Menace",
@@ -112,7 +124,7 @@ function getStreak(entries: any[]) {
 }
 
 export default function StarWarsTracker() {
-  const [entries, setEntries] = useState(INITIAL_DATA)
+  const [entries, setEntries] = useState<Entry[]>(INITIAL_DATA)
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("all")
   const [selectedNotes, setSelectedNotes] = useState<any>(null)
