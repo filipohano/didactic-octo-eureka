@@ -80,10 +80,6 @@ export default function StarWarsTracker() {
   const [filter, setFilter] = useState("all")
   const [selectedNotes, setSelectedNotes] = useState<Entry | null>(null)
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const latestEntries = useRef<Entry[]>([])
-  useEffect(() => {
-  latestEntries.current = entries
-}, [entries])
 
   const [progressData, setProgressData] = useState<ReturnType<
     typeof calculateProgress
@@ -133,36 +129,7 @@ export default function StarWarsTracker() {
       setEta(estimateFinishDate(merged))
     }
 
-      const channel = supabase
-    .channel("progress-sync")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "progress" },
-      async () => {
-        const { data: progress } = await supabase
-          .from("progress")
-          .select("*")
-
-        if (!progress) return
-
-        setEntries((prev) =>
-          prev.map((item) => {
-            const saved = progress.find((p: any) => p.id === item.id)
-
-            return {
-              ...item,
-              watched: saved?.watched || false,
-              watchedAt: saved?.watched_at || null,
-              notes: saved?.notes || "",
-            }
-          })
-        )
-      }
-    )
-    .subscribe()
-
   return () => {
-    supabase.removeChannel(channel)
   }
 
     load()
@@ -250,7 +217,7 @@ function updateNote(id: number, note: string) {
   if (saveTimeout.current) clearTimeout(saveTimeout.current)
 
   saveTimeout.current = setTimeout(async () => {
-    const entry = latestEntries.current.find((e) => e.id === id)
+    const entry = entries.find((e) => e.id === id)
     if (!entry) return
 
     await supabase.from("progress").upsert({
