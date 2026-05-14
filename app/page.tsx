@@ -129,9 +129,6 @@ export default function StarWarsTracker() {
       setEta(estimateFinishDate(merged))
     }
 
-  return () => {
-  }
-
     load()
   }, [])
 
