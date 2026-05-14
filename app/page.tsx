@@ -29,63 +29,28 @@ type Entry = {
   description: string
 }
 
-const INITIAL_DATA: Entry[] = [
-  {
-    id: 1,
-    title: "Episode I — The Phantom Menace",
-    type: "Movie",
-    runtime: 136,
-    watched: false,
-    watchedAt: null,
-    notes: "",
-    group: "Prequel Trilogy",
-    description: "The beginning of Anakin Skywalker’s story.",
-  },
-  {
-    id: 2,
-    title: "Attack of the Clones",
-    type: "Movie",
-    runtime: 142,
-    watched: false,
-    watchedAt: null,
-    notes: "",
-    group: "Prequel Trilogy",
-    description: "The Clone Wars begin.",
-  },
-  {
-    id: 3,
-    title: "The Clone Wars S1E1",
-    type: "Animated",
-    runtime: 22,
-    watched: false,
-    watchedAt: null,
-    notes: "",
-    group: "Clone Wars",
-    description: "Yoda negotiates with Toydaria.",
-  },
-  {
-    id: 4,
-    title: "Revenge of the Sith",
-    type: "Movie",
-    runtime: 140,
-    watched: false,
-    watchedAt: null,
-    notes: "",
-    group: "Prequel Trilogy",
-    description: "The Republic falls.",
-  },
-  {
-    id: 5,
-    title: "Andor Season 1",
-    type: "Live Action",
-    runtime: 540,
-    watched: false,
-    watchedAt: null,
-    notes: "",
-    group: "Andor",
-    description: "Cassian Andor joins the rebellion.",
-  },
-]
+async function fetchSheetData() {
+  const res = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vTWhJiR24WKRWqr9LIXnhpGE2V9K_rAwxsI5oc6zgjEepE6GJlnHJix-bPCj1GC96qnpSdgHnv0vLaN/pub?output=csv")
+  const text = await res.text()
+
+  const rows = text.split("\n").slice(1)
+
+  return rows.map((row, index) => {
+    const cols = row.split(",")
+
+    return {
+      id: index + 1,
+      title: cols[0] || "",
+      type: cols[1] || "Unknown",
+      runtime: Number(cols[2]) || 0,
+      group: cols[3] || "Unknown",
+      description: cols[4] || "",
+      watched: false,
+      watchedAt: null,
+      notes: "",
+    }
+  })
+}
 
 function formatRuntime(minutes: number) {
   const h = Math.floor(minutes / 60)
@@ -125,10 +90,37 @@ function getStreak(entries: any[]) {
 }
 
 export default function StarWarsTracker() {
-  const [entries, setEntries] = useState<Entry[]>(INITIAL_DATA)
+  const [entries, setEntries] = useState<any[]>([])
+
+useEffect(() => {
+  async function load() {
+    const sheetData = await fetchSheetData()
+
+    const { data: progressData } = await supabase
+      .from("progress")
+      .select("*")
+
+    const merged = sheetData.map((entry) => {
+      const saved = progressData?.find((p) => p.id === entry.id)
+
+      return {
+        ...entry,
+        watched: saved?.watched || false,
+        watchedAt: saved?.watched_at || null,
+        notes: saved?.notes || "",
+      }
+    })
+
+    setEntries(merged)
+  }
+
+  load()
+}, [])
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("all")
   const [selectedNotes, setSelectedNotes] = useState<any>(null)
+
+  
 
 useEffect(() => {
   async function loadProgress() {
@@ -193,27 +185,22 @@ useEffect(() => {
   const streak = getStreak(entries)
 
   function toggleWatched(id: number) {
+    supabase.from("progress").upsert({
+    id,
+    watched: !entries.find(e => e.id === id)?.watched,
+    watched_at: new Date().toISOString(),
+    })
     setEntries((prev) =>
-      prev.map((entry) => {
-        if (entry.id === id) {
-          const watched = !entry.watched
-          supabase.from("progress").upsert({
-            id: entry.id,
-            watched,
-            watched_at: watched ? new Date().toISOString() : null,
-            notes: entry.notes,
-            })
-
-          return {
-            ...entry,
-            watched,
-            watchedAt: watched ? new Date().toISOString() : null,
-          }
+    prev.map((entry) =>
+    entry.id === id
+      ? {
+          ...entry,
+          watched: !entry.watched,
+          watchedAt: entry.watched ? null : new Date().toISOString(),
         }
-
-        return entry
-      })
+      : entry
     )
+  )
   }
 
   function updateNote(id: number, note: string) {
