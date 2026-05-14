@@ -87,50 +87,73 @@ export default function StarWarsTracker() {
 
   const [eta, setEta] = useState<Date | null>(null)
 
-  useEffect(() => {
-    async function load() {
-      const { data: items } = await supabase
-        .from("watch_items")
-        .select("*")
-        .order("order_index")
+useEffect(() => {
+  async function load() {
+    const { data: items } = await supabase
+      .from("watch_items")
+      .select("*")
+      .order("order_index");
 
-      const { data: progress } = await supabase
-        .from("progress")
-        .select("*")
+    const { data: progress } = await supabase
+      .from("progress")
+      .select("*");
 
-        console.log(progress)
+    if (!items) return;
 
-      if (!items) return
+    const merged: Entry[] = items.map((item: any) => {
+      const saved = progress?.find((p: any) => p.id === item.id);
+      return {
+        ...item, // Spread existing item properties
+        watched: saved?.watched || false,
+        watchedAt: saved?.watched_at || null,
+        notes: saved?.notes || "",
+      };
+    });
 
-      const merged: Entry[] = items.map((item: any) => {
-        const saved = progress?.find((p: any) => p.id === item.id)
+    setEntries(merged);
+    setProgressData(calculateProgress(merged));
+    setEta(estimateFinishDate(merged));
+  }
 
-        return {
-          id: item.id,
-          title: item.title,
-          type: item.type,
+  load();
 
-          season: item.season,
-          episode: item.episode,
+  // Listen for changes made on ANY device
+  const channel = supabase
+    .channel('schema-db-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'progress' },
+      (payload) => {
+        // If someone else (or your other device) updates a row
+        if (payload.new && 'id' in payload.new) {
+          const newData = payload.new as { 
+            id: number; 
+            watched: boolean; 
+            watched_at: string | null; 
+            notes: string 
+          };
 
-          runtime: item.runtime,
-          description: item.description,
-          episode_title: item.episode_title,
-          poster: item.poster,
-
-          watched: saved?.watched || false,
-          watchedAt: saved?.watched_at || null,
-          notes: saved?.notes || "",
+          setEntries((current) =>
+            current.map((entry) =>
+              entry.id === newData.id
+                ? {
+                    ...entry,
+                    watched: newData.watched,
+                    watchedAt: newData.watched_at,
+                    notes: newData.notes,
+                  }
+                : entry
+            )
+          );
         }
-      })
+      }
+    )
+    .subscribe();
 
-      setEntries(merged)
-      setProgressData(calculateProgress(merged))
-      setEta(estimateFinishDate(merged))
-    }
-
-    load()
-  }, [])
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
 
   const totalRuntime = useMemo(
     () =>
@@ -176,54 +199,44 @@ export default function StarWarsTracker() {
 
   const streak = getStreak(entries)
 
-  async function toggleWatched(id: number) {
-    const current = entries.find((e) => e.id === id)
+async function toggleWatched(id: number) {
+  const entry = entries.find((e) => e.id === id);
+  if (!entry) return;
 
-    if (!current) return
+  const nextWatched = !entry.watched;
+  const nextDate = nextWatched ? new Date().toISOString() : null;
 
-    const watched = !current.watched
-    const watchedAt = watched ? new Date().toISOString() : null
+  // 1. Update local UI immediately (Snappy vibe)
+  setEntries((prev) =>
+    prev.map((e) => (e.id === id ? { ...e, watched: nextWatched, watchedAt: nextDate } : e))
+  );
 
-    await supabase.from("progress").upsert({
-      id,
-      watched,
-      watched_at: watchedAt,
-      notes: current.notes || "",
-    })
-
-    setEntries((prev) =>
-      prev.map((entry) =>
-        entry.id === id
-          ? {
-              ...entry,
-              watched,
-              watchedAt,
-            }
-          : entry
-      )
-    )
-  }
+  // 2. Push to Supabase (Sync vibe)
+  await supabase.from("progress").upsert({
+    id: id,
+    watched: nextWatched,
+    watched_at: nextDate,
+  });
+}
 
 function updateNote(id: number, note: string) {
+  // Update UI immediately for that "snappy" feeling
   setEntries((prev) =>
     prev.map((entry) =>
       entry.id === id ? { ...entry, notes: note } : entry
     )
-  )
+  );
 
-  if (saveTimeout.current) clearTimeout(saveTimeout.current)
+  if (saveTimeout.current) clearTimeout(saveTimeout.current);
 
   saveTimeout.current = setTimeout(async () => {
-    const entry = entries.find((e) => e.id === id)
-    if (!entry) return
-
+    // We just update the specific record in the DB
+    // We don't need to check the local 'entries' state here anymore
     await supabase.from("progress").upsert({
-      id,
-      watched: entry.watched,
-      watched_at: entry.watchedAt,
+      id: id,
       notes: note,
-    })
-  }, 500)
+    });
+  }, 1000); 
 }
 
   function exportProgress() {
