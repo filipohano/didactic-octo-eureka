@@ -22,10 +22,10 @@ async function fetchSheet(): Promise<SheetRow[]> {
   const res = await fetch(SHEET_URL)
   const csv = await res.text()
 
- return parse(csv, {
-  columns: true,
-  skip_empty_lines: true,
-}) as SheetRow[]
+  return parse(csv, {
+    columns: true,
+    skip_empty_lines: true,
+  }) as SheetRow[]
 }
 
 async function enrich(row: any) {
@@ -52,6 +52,7 @@ async function enrich(row: any) {
       tmdb_id: match.id,
       runtime: details.runtime ?? null,
       description: details.overview ?? "",
+      episode_title: null,  // movies don't have episode titles
       poster: details.poster_path
         ? `https://image.tmdb.org/t/p/w500${details.poster_path}`
         : null,
@@ -67,10 +68,13 @@ async function enrich(row: any) {
       tmdb_id: match.id,
       runtime: ep.runtime ?? null,
       description: ep.overview ?? "",
+      // ✅ FIX: Save the episode title (ep.name) so the frontend can display it
+      episode_title: ep.name ?? null,
       poster: null,
     }
   }
 
+  // TV show with no season/episode specified — series level
   const details = await fetch(
     `${TMDB_BASE}/tv/${match.id}?api_key=${TMDB_KEY}`
   ).then(r => r.json())
@@ -79,6 +83,7 @@ async function enrich(row: any) {
     tmdb_id: match.id,
     runtime: null,
     description: details.overview ?? "",
+    episode_title: null,
     poster: details.poster_path
       ? `https://image.tmdb.org/t/p/w500${details.poster_path}`
       : null,
@@ -89,7 +94,6 @@ export async function GET(req: Request) {
   const url = new URL(req.url)
   const secret = url.searchParams.get("key")
 
-  // simple protection
   if (secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -118,7 +122,7 @@ export async function GET(req: Request) {
       season: row.season ? Number(row.season) : null,
       episode: row.episode ? Number(row.episode) : null,
 
-      ...enriched,
+      ...enriched,  // includes episode_title now
 
       watched: existingItem?.watched ?? false,
       watched_at: existingItem?.watched_at ?? null,

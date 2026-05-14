@@ -19,39 +19,22 @@ import {
   Upload,
 } from "lucide-react"
 
+// ✅ FIX 1: Entry type now includes season, episode, and episodeTitle
 type Entry = {
   id: number
   title: string
   type: string
+  season: number | null
+  episode: number | null
+  episodeTitle: string | null
   runtime: number
   watched: boolean
   watchedAt: string | null
   notes: string
   group: string
   description: string
-}
-
-async function fetchSheetData() {
-  const res = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vRQr5PBBlvmyiEirREHbS6twIaFVDe2ONSZ2kHNikqxzxH0UrGTOmMD0YvBVAGUAFrNlXnsWdhhcx9o/pub?output=csv")
-  const text = await res.text()
-
-  const rows = text.split("\n").slice(1)
-
-  return rows.map((row, index) => {
-    const cols = row.split(",")
-
-    return {
-      id: index + 1,
-      title: cols[0] || "",
-      type: cols[1] || "Unknown",
-      runtime: Number(cols[2]) || 0,
-      group: cols[3] || "Unknown",
-      description: cols[4] || "",
-      watched: false,
-      watchedAt: null,
-      notes: "",
-    }
-  })
+  poster: string | null
+  order_index: number
 }
 
 function formatRuntime(minutes: number) {
@@ -92,70 +75,52 @@ function getStreak(entries: any[]) {
 }
 
 export default function StarWarsTracker() {
-  const [entries, setEntries] = useState<any[]>([])
+  const [entries, setEntries] = useState<Entry[]>([])
   const [progressData, setProgressData] = useState<ReturnType<typeof calculateProgress> | null>(null)
   const [eta, setEta] = useState<Date | null>(null)
-
-useEffect(() => {
-  async function load() {
-    const sheetData = await fetchSheetData()
-
-    const { data: progressData } = await supabase
-      .from("progress")
-      .select("*")
-
-    const merged = sheetData.map((entry) => {
-      const saved = progressData?.find((p) => p.id === entry.id)
-
-      return {
-        ...entry,
-        watched: saved?.watched || false,
-        watchedAt: saved?.watched_at || null,
-        notes: saved?.notes || "",
-      }
-    })
-
-    // ✅ NOW we compute progress from REAL data
-    setProgressData(calculateProgress(merged))
-    setEta(estimateFinishDate(merged))
-
-    setEntries(merged)
-  }
-
-  load()
-}, [])
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("all")
   const [selectedNotes, setSelectedNotes] = useState<any>(null)
 
-  
+  // ✅ FIX 2: Single useEffect, reads from watch_items (not raw CSV or "progress" table)
+  useEffect(() => {
+    async function load() {
+      const { data, error } = await supabase
+        .from("watch_items")
+        .select("*")
+        .order("order_index", { ascending: true })
 
-useEffect(() => {
-  async function loadProgress() {
-    const { data } = await supabase
-      .from("progress")
-      .select("*")
+      if (error) {
+        console.error("Failed to load watch_items:", error)
+        return
+      }
 
-    if (!data) return
+      // ✅ FIX 3: Map Supabase columns to Entry fields including season/episode/episodeTitle
+      const mapped: Entry[] = (data ?? []).map((row) => ({
+        id: row.id,
+        title: row.title,
+        type: row.type,
+        season: row.season ?? null,
+        episode: row.episode ?? null,
+        // episode_title is what TMDB returns via ep.name in the sync route
+        episodeTitle: row.episode_title ?? null,
+        runtime: row.runtime ?? 0,
+        watched: row.watched ?? false,
+        watchedAt: row.watched_at ?? null,
+        notes: row.notes ?? "",
+        group: row.group ?? "",
+        description: row.description ?? "",
+        poster: row.poster ?? null,
+        order_index: row.order_index,
+      }))
 
-    setEntries((prev) =>
-      prev.map((entry) => {
-        const saved = data.find((d) => d.id === entry.id)
+      setProgressData(calculateProgress(mapped))
+      setEta(estimateFinishDate(mapped))
+      setEntries(mapped)
+    }
 
-        if (!saved) return entry
-
-        return {
-          ...entry,
-          watched: saved.watched,
-          watchedAt: saved.watched_at,
-          notes: saved.notes,
-        }
-      })
-    )
-  }
-
-  loadProgress()
-}, [])
+    load()
+  }, [])
 
   const totalRuntime = useMemo(
     () => entries.reduce((acc, item) => acc + item.runtime, 0),
@@ -170,7 +135,7 @@ useEffect(() => {
     [entries]
   )
 
-  const progress = Math.round((watchedRuntime / totalRuntime) * 100)
+  const progress = totalRuntime > 0 ? Math.round((watchedRuntime / totalRuntime) * 100) : 0
 
   const nextUp = entries.find((e) => !e.watched)
 
@@ -192,35 +157,33 @@ useEffect(() => {
 
   const streak = getStreak(entries)
 
-  function toggleWatched(id: number) {
-    supabase.from("progress").upsert({
-    id,
-    watched: !entries.find(e => e.id === id)?.watched,
-    watched_at: new Date().toISOString(),
-    })
+  async function toggleWatched(id: number) {
+    const entry = entries.find((e) => e.id === id)
+    if (!entry) return
+
+    const newWatched = !entry.watched
+    const newWatchedAt = newWatched ? new Date().toISOString() : null
+
+    await supabase.from("watch_items").update({
+      watched: newWatched,
+      watched_at: newWatchedAt,
+    }).eq("id", id)
+
     setEntries((prev) =>
-    prev.map((entry) =>
-    entry.id === id
-      ? {
-          ...entry,
-          watched: !entry.watched,
-          watchedAt: entry.watched ? null : new Date().toISOString(),
-        }
-      : entry
+      prev.map((e) =>
+        e.id === id
+          ? { ...e, watched: newWatched, watchedAt: newWatchedAt }
+          : e
+      )
     )
-  )
   }
 
   function updateNote(id: number, note: string) {
     setEntries((prev) =>
       prev.map((entry) => {
         if (entry.id === id) {
-          return {
-            ...entry,
-            notes: note,
-          }
+          return { ...entry, notes: note }
         }
-
         return entry
       })
     )
@@ -232,7 +195,6 @@ useEffect(() => {
     })
 
     const url = URL.createObjectURL(blob)
-
     const a = document.createElement("a")
     a.href = url
     a.download = "starwars-progress.json"
@@ -241,15 +203,12 @@ useEffect(() => {
 
   function importProgress(e: any) {
     const file = e.target.files[0]
-
     if (!file) return
 
     const reader = new FileReader()
-
     reader.onload = (event: any) => {
       setEntries(JSON.parse(event.target.result))
     }
-
     reader.readAsText(file)
   }
 
@@ -387,9 +346,17 @@ useEffect(() => {
 
             {nextUp && (
               <>
-                <h3 className="text-2xl font-black mb-3">
+                <h3 className="text-2xl font-black mb-1">
                   {nextUp.title}
                 </h3>
+
+                {/* ✅ FIX 4: Show season/episode number and episode title */}
+                {nextUp.season && nextUp.episode && (
+                  <p className="text-yellow-400/70 text-sm mb-1">
+                    S{nextUp.season}E{nextUp.episode}
+                    {nextUp.episodeTitle ? ` — ${nextUp.episodeTitle}` : ""}
+                  </p>
+                )}
 
                 <p className="text-zinc-400 mb-4 text-sm leading-relaxed">
                   {nextUp.description}
@@ -416,29 +383,29 @@ useEffect(() => {
           </motion.div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
-  <div className="flex justify-between text-sm text-zinc-400">
-    <span>Progress</span>
-    <span>{progressData?.progressPercent}%</span>
-  </div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-6">
+          <div className="flex justify-between text-sm text-zinc-400">
+            <span>Progress</span>
+            <span>{progressData?.progressPercent}%</span>
+          </div>
 
-  <div className="w-full h-2 bg-zinc-800 rounded-full mt-2">
-    <div
-      className="h-2 bg-yellow-500 rounded-full"
-      style={{ width: `${progressData?.progressPercent}%` }}
-    />
-  </div>
+          <div className="w-full h-2 bg-zinc-800 rounded-full mt-2">
+            <div
+              className="h-2 bg-yellow-500 rounded-full"
+              style={{ width: `${progressData?.progressPercent}%` }}
+            />
+          </div>
 
-  <div className="text-xs text-zinc-500 mt-2">
-    {Math.round((progressData?.remainingRuntime ?? 0) / 60)} hours left
-  </div>
+          <div className="text-xs text-zinc-500 mt-2">
+            {Math.round((progressData?.remainingRuntime ?? 0) / 60)} hours left
+          </div>
 
-  {eta && (
-    <div className="text-xs text-zinc-500 mt-1">
-      Estimated finish: {eta.toDateString()}
-    </div>
-  )}
-</div>
+          {eta && (
+            <div className="text-xs text-zinc-500 mt-1">
+              Estimated finish: {eta.toDateString()}
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 backdrop-blur-xl">
@@ -500,7 +467,7 @@ useEffect(() => {
                       </button>
 
                       <div>
-                        <div className="flex items-center gap-3 flex-wrap mb-2">
+                        <div className="flex items-center gap-3 flex-wrap mb-1">
                           <h3 className="font-bold text-xl">
                             {entry.title}
                           </h3>
@@ -513,6 +480,14 @@ useEffect(() => {
                             {formatRuntime(entry.runtime)}
                           </span>
                         </div>
+
+                        {/* ✅ FIX 4: Season/episode + episode title in each card */}
+                        {entry.season && entry.episode && (
+                          <p className="text-yellow-400/60 text-sm mb-1">
+                            S{entry.season}E{entry.episode}
+                            {entry.episodeTitle ? ` — ${entry.episodeTitle}` : ""}
+                          </p>
+                        )}
 
                         <p className="text-zinc-400 mb-3">
                           {entry.description}
@@ -569,10 +544,16 @@ useEffect(() => {
                     >
                       <div>
                         <p className="font-semibold">{entry.title}</p>
+                        {entry.season && entry.episode && (
+                          <p className="text-yellow-400/50 text-xs">
+                            S{entry.season}E{entry.episode}
+                            {entry.episodeTitle ? ` — ${entry.episodeTitle}` : ""}
+                          </p>
+                        )}
                         <p className="text-zinc-500 text-sm">
                           {entry.watchedAt
                             ? new Date(entry.watchedAt).toLocaleString()
-                            : "Not watched"}  
+                            : "Not watched"}
                         </p>
                       </div>
 
@@ -595,6 +576,12 @@ useEffect(() => {
                       className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800"
                     >
                       <p className="font-semibold mb-1">{entry.title}</p>
+                      {entry.season && entry.episode && (
+                        <p className="text-yellow-400/50 text-xs mb-1">
+                          S{entry.season}E{entry.episode}
+                          {entry.episodeTitle ? ` — ${entry.episodeTitle}` : ""}
+                        </p>
+                      )}
                       <p className="text-zinc-500 text-sm">
                         {entry.type} • {formatRuntime(entry.runtime)}
                       </p>
