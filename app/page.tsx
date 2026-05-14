@@ -1,65 +1,581 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useEffect, useMemo, useState } from "react"
+import { motion } from "framer-motion"
+import {
+  CheckCircle2,
+  Clock3,
+  Flame,
+  Star,
+  Calendar,
+  Trophy,
+  ChevronRight,
+  Search,
+  Undo2,
+  Download,
+  Upload,
+} from "lucide-react"
+
+const INITIAL_DATA = [
+  {
+    id: 1,
+    title: "Episode I — The Phantom Menace",
+    type: "Movie",
+    runtime: 136,
+    watched: false,
+    watchedAt: null,
+    notes: "",
+    group: "Prequel Trilogy",
+    description: "The beginning of Anakin Skywalker’s story.",
+  },
+  {
+    id: 2,
+    title: "Attack of the Clones",
+    type: "Movie",
+    runtime: 142,
+    watched: false,
+    watchedAt: null,
+    notes: "",
+    group: "Prequel Trilogy",
+    description: "The Clone Wars begin.",
+  },
+  {
+    id: 3,
+    title: "The Clone Wars S1E1",
+    type: "Animated",
+    runtime: 22,
+    watched: false,
+    watchedAt: null,
+    notes: "",
+    group: "Clone Wars",
+    description: "Yoda negotiates with Toydaria.",
+  },
+  {
+    id: 4,
+    title: "Revenge of the Sith",
+    type: "Movie",
+    runtime: 140,
+    watched: false,
+    watchedAt: null,
+    notes: "",
+    group: "Prequel Trilogy",
+    description: "The Republic falls.",
+  },
+  {
+    id: 5,
+    title: "Andor Season 1",
+    type: "Live Action",
+    runtime: 540,
+    watched: false,
+    watchedAt: null,
+    notes: "",
+    group: "Andor",
+    description: "Cassian Andor joins the rebellion.",
+  },
+]
+
+function formatRuntime(minutes: number) {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+
+  if (h === 0) return `${m}m`
+  return `${h}h ${m}m`
+}
+
+function getStreak(entries: any[]) {
+  const watched = entries
+    .filter((e) => e.watchedAt)
+    .sort(
+      (a, b) =>
+        new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime()
+    )
+
+  if (!watched.length) return 0
+
+  let streak = 1
+
+  for (let i = 1; i < watched.length; i++) {
+    const prev = new Date(watched[i - 1].watchedAt)
+    const curr = new Date(watched[i].watchedAt)
+
+    const diff =
+      (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24)
+
+    if (diff <= 1.5) {
+      streak++
+    } else {
+      break
+    }
+  }
+
+  return streak
+}
+
+export default function StarWarsTracker() {
+  const [entries, setEntries] = useState(INITIAL_DATA)
+  const [search, setSearch] = useState("")
+  const [filter, setFilter] = useState("all")
+  const [selectedNotes, setSelectedNotes] = useState<any>(null)
+
+  useEffect(() => {
+    const saved = localStorage.getItem("sw-tracker")
+
+    if (saved) {
+      setEntries(JSON.parse(saved))
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem("sw-tracker", JSON.stringify(entries))
+  }, [entries])
+
+  const totalRuntime = useMemo(
+    () => entries.reduce((acc, item) => acc + item.runtime, 0),
+    [entries]
+  )
+
+  const watchedRuntime = useMemo(
+    () =>
+      entries
+        .filter((e) => e.watched)
+        .reduce((acc, item) => acc + item.runtime, 0),
+    [entries]
+  )
+
+  const progress = Math.round((watchedRuntime / totalRuntime) * 100)
+
+  const nextUp = entries.find((e) => !e.watched)
+
+  const watchedEntries = entries.filter((e) => e.watched)
+
+  const avgMinutesPerDay = watchedEntries.length
+    ? watchedRuntime / watchedEntries.length
+    : 0
+
+  const remaining = totalRuntime - watchedRuntime
+
+  const estimatedDays = avgMinutesPerDay
+    ? Math.ceil(remaining / avgMinutesPerDay)
+    : null
+
+  const estimatedDate = estimatedDays
+    ? new Date(Date.now() + estimatedDays * 86400000)
+    : null
+
+  const streak = getStreak(entries)
+
+  function toggleWatched(id: number) {
+    setEntries((prev) =>
+      prev.map((entry) => {
+        if (entry.id === id) {
+          const watched = !entry.watched
+
+          return {
+            ...entry,
+            watched,
+            watchedAt: watched ? new Date().toISOString() : null,
+          }
+        }
+
+        return entry
+      })
+    )
+  }
+
+  function updateNote(id: number, note: string) {
+    setEntries((prev) =>
+      prev.map((entry) => {
+        if (entry.id === id) {
+          return {
+            ...entry,
+            notes: note,
+          }
+        }
+
+        return entry
+      })
+    )
+  }
+
+  function exportProgress() {
+    const blob = new Blob([JSON.stringify(entries, null, 2)], {
+      type: "application/json",
+    })
+
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "starwars-progress.json"
+    a.click()
+  }
+
+  function importProgress(e: any) {
+    const file = e.target.files[0]
+
+    if (!file) return
+
+    const reader = new FileReader()
+
+    reader.onload = (event: any) => {
+      setEntries(JSON.parse(event.target.result))
+    }
+
+    reader.readAsText(file)
+  }
+
+  const filteredEntries = entries.filter((entry) => {
+    const matchesSearch = entry.title
+      .toLowerCase()
+      .includes(search.toLowerCase())
+
+    if (filter === "watched") {
+      return entry.watched && matchesSearch
+    }
+
+    if (filter === "unwatched") {
+      return !entry.watched && matchesSearch
+    }
+
+    return matchesSearch
+  })
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="min-h-screen bg-black text-white overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,196,0,0.18),transparent_45%)]" />
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 md:px-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
+          <div>
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight">
+              STAR WARS
+            </h1>
+            <p className="text-zinc-400 text-lg mt-2">
+              Chronological Marathon Tracker
+            </p>
+          </div>
+
+          <div className="flex gap-3 flex-wrap">
+            <button
+              onClick={exportProgress}
+              className="bg-zinc-900 border border-zinc-800 px-4 py-3 rounded-2xl flex items-center gap-2 hover:border-yellow-500 transition"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <Download size={18} /> Export
+            </button>
+
+            <label className="bg-zinc-900 border border-zinc-800 px-4 py-3 rounded-2xl flex items-center gap-2 hover:border-yellow-500 transition cursor-pointer">
+              <Upload size={18} /> Import
+              <input
+                type="file"
+                className="hidden"
+                onChange={importProgress}
+              />
+            </label>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="lg:col-span-3 rounded-3xl border border-yellow-500/20 bg-zinc-950/70 backdrop-blur-xl p-8"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <p className="text-zinc-400 mb-2">Overall Progress</p>
+                <h2 className="text-5xl font-black text-yellow-400">
+                  {progress}%
+                </h2>
+              </div>
+
+              <div className="text-right">
+                <p className="text-zinc-400">Runtime Watched</p>
+                <p className="text-2xl font-bold">
+                  {formatRuntime(watchedRuntime)}
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full bg-zinc-900 rounded-full h-5 overflow-hidden mb-6">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 1 }}
+                className="h-full bg-gradient-to-r from-yellow-500 to-amber-300"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-zinc-900/70 rounded-2xl p-4 border border-zinc-800">
+                <div className="flex items-center gap-2 text-zinc-400 mb-2">
+                  <Clock3 size={16} /> Remaining
+                </div>
+                <p className="font-bold text-xl">
+                  {formatRuntime(remaining)}
+                </p>
+              </div>
+
+              <div className="bg-zinc-900/70 rounded-2xl p-4 border border-zinc-800">
+                <div className="flex items-center gap-2 text-zinc-400 mb-2">
+                  <Flame size={16} /> Streak
+                </div>
+                <p className="font-bold text-xl">{streak} days</p>
+              </div>
+
+              <div className="bg-zinc-900/70 rounded-2xl p-4 border border-zinc-800">
+                <div className="flex items-center gap-2 text-zinc-400 mb-2">
+                  <Calendar size={16} /> ETA
+                </div>
+                <p className="font-bold text-lg">
+                  {estimatedDate
+                    ? estimatedDate.toLocaleDateString()
+                    : "Not enough data"}
+                </p>
+              </div>
+
+              <div className="bg-zinc-900/70 rounded-2xl p-4 border border-zinc-800">
+                <div className="flex items-center gap-2 text-zinc-400 mb-2">
+                  <Trophy size={16} /> Completed
+                </div>
+                <p className="font-bold text-xl">
+                  {watchedEntries.length}/{entries.length}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="rounded-3xl border border-yellow-500/20 bg-gradient-to-b from-yellow-500/10 to-zinc-950/80 p-6"
           >
-            Documentation
-          </a>
+            <div className="flex items-center gap-2 mb-4 text-yellow-400 font-bold">
+              <Star size={18} /> UP NEXT
+            </div>
+
+            {nextUp && (
+              <>
+                <h3 className="text-2xl font-black mb-3">
+                  {nextUp.title}
+                </h3>
+
+                <p className="text-zinc-400 mb-4 text-sm leading-relaxed">
+                  {nextUp.description}
+                </p>
+
+                <div className="flex gap-2 flex-wrap mb-6">
+                  <span className="bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full text-sm">
+                    {nextUp.type}
+                  </span>
+
+                  <span className="bg-zinc-800 px-3 py-1 rounded-full text-sm">
+                    {formatRuntime(nextUp.runtime)}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => toggleWatched(nextUp.id)}
+                  className="w-full bg-yellow-400 hover:bg-yellow-300 transition text-black font-black py-4 rounded-2xl"
+                >
+                  MARK AS WATCHED
+                </button>
+              </>
+            )}
+          </motion.div>
         </div>
-      </main>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 backdrop-blur-xl">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <h2 className="text-2xl font-black">Full Timeline</h2>
+
+              <div className="flex gap-3 flex-wrap">
+                <div className="relative">
+                  <Search
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+                  />
+
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search"
+                    className="bg-zinc-900 border border-zinc-800 rounded-2xl pl-10 pr-4 py-3 outline-none focus:border-yellow-500"
+                  />
+                </div>
+
+                <select
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  className="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3 outline-none focus:border-yellow-500"
+                >
+                  <option value="all">All</option>
+                  <option value="watched">Watched</option>
+                  <option value="unwatched">Unwatched</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-4 max-h-[900px] overflow-y-auto pr-2">
+              {filteredEntries.map((entry) => (
+                <motion.div
+                  key={entry.id}
+                  layout
+                  className={`rounded-2xl border p-5 transition ${
+                    entry.watched
+                      ? "bg-yellow-500/10 border-yellow-500/30"
+                      : "bg-zinc-900/60 border-zinc-800"
+                  }`}
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <button
+                        onClick={() => toggleWatched(entry.id)}
+                        className="mt-1"
+                      >
+                        <CheckCircle2
+                          className={`transition ${
+                            entry.watched
+                              ? "text-yellow-400"
+                              : "text-zinc-700"
+                          }`}
+                          size={30}
+                        />
+                      </button>
+
+                      <div>
+                        <div className="flex items-center gap-3 flex-wrap mb-2">
+                          <h3 className="font-bold text-xl">
+                            {entry.title}
+                          </h3>
+
+                          <span className="bg-zinc-800 px-3 py-1 rounded-full text-xs text-zinc-300">
+                            {entry.type}
+                          </span>
+
+                          <span className="bg-zinc-800 px-3 py-1 rounded-full text-xs text-zinc-300">
+                            {formatRuntime(entry.runtime)}
+                          </span>
+                        </div>
+
+                        <p className="text-zinc-400 mb-3">
+                          {entry.description}
+                        </p>
+
+                        <div className="flex items-center gap-3 flex-wrap text-sm text-zinc-500">
+                          <span>{entry.group}</span>
+
+                          {entry.watchedAt && (
+                            <span>
+                              Watched {new Date(entry.watchedAt).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setSelectedNotes(entry)}
+                        className="bg-zinc-800 hover:bg-zinc-700 transition px-4 py-2 rounded-xl text-sm"
+                      >
+                        Notes
+                      </button>
+
+                      {entry.watched && (
+                        <button
+                          onClick={() => toggleWatched(entry.id)}
+                          className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition px-4 py-2 rounded-xl text-sm flex items-center gap-2"
+                        >
+                          <Undo2 size={14} /> Undo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6">
+              <h2 className="text-2xl font-black mb-6">Recent Activity</h2>
+
+              <div className="space-y-4">
+                {watchedEntries
+                  .slice()
+                  .reverse()
+                  .slice(0, 5)
+                  .map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-center justify-between border-b border-zinc-800 pb-4"
+                    >
+                      <div>
+                        <p className="font-semibold">{entry.title}</p>
+                        <p className="text-zinc-500 text-sm">
+                          {new Date(entry.watchedAt).toLocaleString()}
+                        </p>
+                      </div>
+
+                      <ChevronRight className="text-zinc-600" />
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6">
+              <h2 className="text-2xl font-black mb-6">Upcoming Queue</h2>
+
+              <div className="space-y-4">
+                {entries
+                  .filter((e) => !e.watched)
+                  .slice(0, 4)
+                  .map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800"
+                    >
+                      <p className="font-semibold mb-1">{entry.title}</p>
+                      <p className="text-zinc-500 text-sm">
+                        {entry.type} • {formatRuntime(entry.runtime)}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {selectedNotes && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 w-full max-w-xl">
+              <h2 className="text-2xl font-black mb-4">
+                Notes — {selectedNotes.title}
+              </h2>
+
+              <textarea
+                value={selectedNotes.notes}
+                onChange={(e) =>
+                  updateNote(selectedNotes.id, e.target.value)
+                }
+                className="w-full h-40 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 outline-none focus:border-yellow-500"
+                placeholder="Write anything about your watch session..."
+              />
+
+              <div className="flex justify-end gap-3 mt-4">
+                <button
+                  onClick={() => setSelectedNotes(null)}
+                  className="bg-zinc-800 px-5 py-3 rounded-2xl"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-  );
+  )
 }
