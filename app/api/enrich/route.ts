@@ -5,98 +5,157 @@ const TMDB_BASE = "https://api.themoviedb.org/3"
 const IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 
 if (!TMDB_KEY) {
-  console.error("Missing TMDB_API_KEY in environment variables")
+  console.error("Missing TMDB_API_KEY")
 }
 
-// 1. SEARCH (returns basic match + ID)
-async function searchTitle(title: string) {
+async function searchMovie(title: string) {
   const res = await fetch(
-    `${TMDB_BASE}/search/multi?query=${encodeURIComponent(title)}&api_key=${TMDB_KEY}`
+    `${TMDB_BASE}/search/movie?query=${encodeURIComponent(title)}&api_key=${TMDB_KEY}`
   )
-
-  if (!res.ok) throw new Error("TMDB search failed")
-
   const data = await res.json()
   return data.results?.[0] || null
 }
 
-// 2. FETCH FULL DETAILS (runtime lives here)
-async function fetchDetails(item: any) {
-  if (!item?.id || !item?.media_type) return null
+async function searchTV(title: string) {
+  const res = await fetch(
+    `${TMDB_BASE}/search/tv?query=${encodeURIComponent(title)}&api_key=${TMDB_KEY}`
+  )
+  const data = await res.json()
+  return data.results?.[0] || null
+}
 
-  if (item.media_type === "movie") {
-    const res = await fetch(
-      `${TMDB_BASE}/movie/${item.id}?api_key=${TMDB_KEY}`
-    )
-    if (!res.ok) return null
-    return res.json()
-  }
+async function getMovieDetails(id: number) {
+  const res = await fetch(
+    `${TMDB_BASE}/movie/${id}?api_key=${TMDB_KEY}`
+  )
+  return res.json()
+}
 
-  if (item.media_type === "tv") {
-    const res = await fetch(
-      `${TMDB_BASE}/tv/${item.id}?api_key=${TMDB_KEY}`
-    )
-    if (!res.ok) return null
-    return res.json()
-  }
+async function getTVDetails(id: number) {
+  const res = await fetch(
+    `${TMDB_BASE}/tv/${id}?api_key=${TMDB_KEY}`
+  )
+  return res.json()
+}
 
-  return null
+async function getEpisodeDetails(
+  showId: number,
+  season: number,
+  episode: number
+) {
+  const res = await fetch(
+    `${TMDB_BASE}/tv/${showId}/season/${season}/episode/${episode}?api_key=${TMDB_KEY}`
+  )
+  return res.json()
 }
 
 export async function POST(req: Request) {
   try {
-    const { title } = await req.json()
+    const body = await req.json()
 
-    if (!title || typeof title !== "string") {
+    const {
+      title,
+      type,
+      season,
+      episode,
+    }: {
+      title: string
+      type: "movie" | "tv"
+      season?: number
+      episode?: number
+    } = body
+
+    if (!title || !type) {
       return NextResponse.json(
-        { error: "Invalid or missing title" },
+        { error: "Missing title or type" },
         { status: 400 }
       )
     }
 
-    // STEP 1: search
-    const match = await searchTitle(title)
+    // -------------------------
+    // MOVIE
+    // -------------------------
+    if (type === "movie") {
+      const match = await searchMovie(title)
+      if (!match) {
+        return NextResponse.json({ error: "Movie not found" }, { status: 404 })
+      }
 
-    if (!match) {
-      return NextResponse.json(
-        { error: "No TMDB match found" },
-        { status: 404 }
-      )
+      const details = await getMovieDetails(match.id)
+
+      return NextResponse.json({
+        title: match.title,
+        type: "movie",
+        runtime: details.runtime ?? null,
+        description: details.overview ?? "",
+        releaseDate: details.release_date ?? null,
+        poster: details.poster_path
+          ? `${IMAGE_BASE}${details.poster_path}`
+          : null,
+        tmdbId: match.id,
+      })
     }
 
-    // STEP 2: fetch details
-    const details = await fetchDetails(match)
+    // -------------------------
+    // TV SHOW (SERIES LEVEL)
+    // -------------------------
+    if (type === "tv" && (!season || !episode)) {
+      const match = await searchTV(title)
+      if (!match) {
+        return NextResponse.json({ error: "TV show not found" }, { status: 404 })
+      }
 
-    const isMovie = match.media_type === "movie"
+      const details = await getTVDetails(match.id)
 
-    // STEP 3: normalize runtime
-    let runtime: number | null = null
-
-    if (isMovie) {
-      runtime = details?.runtime ?? null
-    } else {
-      // TV shows: episode_run_time is array
-      runtime = details?.episode_run_time?.[0] ?? null
+      return NextResponse.json({
+        title: match.name,
+        type: "tv",
+        runtime: null,
+        description: details.overview ?? "",
+        releaseDate: details.first_air_date ?? null,
+        poster: details.poster_path
+          ? `${IMAGE_BASE}${details.poster_path}`
+          : null,
+        tmdbId: match.id,
+      })
     }
 
-    // STEP 4: return clean object
-    const enriched = {
-      title: match.title || match.name || title,
-      type: match.media_type || "unknown",
-      runtime,
-      description: details?.overview || match.overview || "",
-      releaseDate: details?.release_date || details?.first_air_date || null,
-      poster: details?.poster_path
-        ? `${IMAGE_BASE}${details.poster_path}`
-        : null,
-      tmdbId: match.id,
+    // -------------------------
+    // TV EPISODE
+    // -------------------------
+    if (type === "tv" && season && episode) {
+      const show = await searchTV(title)
+
+      if (!show) {
+        return NextResponse.json(
+          { error: "TV show not found" },
+          { status: 404 }
+        )
+      }
+
+      const ep = await getEpisodeDetails(show.id, season, episode)
+
+      return NextResponse.json({
+        title: ep.name,
+        type: "tv",
+        runtime: ep.runtime ?? null,
+        description: ep.overview ?? "",
+        releaseDate: ep.air_date ?? null,
+        poster: null,
+        tmdbId: show.id,
+        season,
+        episode,
+      })
     }
 
-    return NextResponse.json(enriched)
+    return NextResponse.json(
+      { error: "Invalid request format" },
+      { status: 400 }
+    )
   } catch (err: any) {
     return NextResponse.json(
       {
-        error: "Enrichment failed",
+        error: "Server error",
         details: err?.message || String(err),
       },
       { status: 500 }

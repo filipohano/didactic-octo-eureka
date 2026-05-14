@@ -1,5 +1,7 @@
 "use client"
 
+import { calculateProgress, estimateFinishDate } from "@/lib/progress"
+import SyncButton from "./components/SyncButton"
 import { supabase } from "@/lib/supabase"
 import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
@@ -30,7 +32,7 @@ type Entry = {
 }
 
 async function fetchSheetData() {
-  const res = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vTWhJiR24WKRWqr9LIXnhpGE2V9K_rAwxsI5oc6zgjEepE6GJlnHJix-bPCj1GC96qnpSdgHnv0vLaN/pub?output=csv")
+  const res = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vRQr5PBBlvmyiEirREHbS6twIaFVDe2ONSZ2kHNikqxzxH0UrGTOmMD0YvBVAGUAFrNlXnsWdhhcx9o/pub?output=csv")
   const text = await res.text()
 
   const rows = text.split("\n").slice(1)
@@ -91,6 +93,8 @@ function getStreak(entries: any[]) {
 
 export default function StarWarsTracker() {
   const [entries, setEntries] = useState<any[]>([])
+  const [progressData, setProgressData] = useState<ReturnType<typeof calculateProgress> | null>(null)
+  const [eta, setEta] = useState<Date | null>(null)
 
 useEffect(() => {
   async function load() {
@@ -110,6 +114,10 @@ useEffect(() => {
         notes: saved?.notes || "",
       }
     })
+
+    // ✅ NOW we compute progress from REAL data
+    setProgressData(calculateProgress(merged))
+    setEta(estimateFinishDate(merged))
 
     setEntries(merged)
   }
@@ -284,6 +292,8 @@ useEffect(() => {
               <Download size={18} /> Export
             </button>
 
+            <SyncButton />
+
             <label className="bg-zinc-900 border border-zinc-800 px-4 py-3 rounded-2xl flex items-center gap-2 hover:border-yellow-500 transition cursor-pointer">
               <Upload size={18} /> Import
               <input
@@ -405,6 +415,30 @@ useEffect(() => {
             )}
           </motion.div>
         </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+  <div className="flex justify-between text-sm text-zinc-400">
+    <span>Progress</span>
+    <span>{progressData?.progressPercent}%</span>
+  </div>
+
+  <div className="w-full h-2 bg-zinc-800 rounded-full mt-2">
+    <div
+      className="h-2 bg-yellow-500 rounded-full"
+      style={{ width: `${progressData?.progressPercent}%` }}
+    />
+  </div>
+
+  <div className="text-xs text-zinc-500 mt-2">
+    {Math.round((progressData?.remainingRuntime ?? 0) / 60)} hours left
+  </div>
+
+  {eta && (
+    <div className="text-xs text-zinc-500 mt-1">
+      Estimated finish: {eta.toDateString()}
+    </div>
+  )}
+</div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 backdrop-blur-xl">
