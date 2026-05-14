@@ -200,23 +200,24 @@ useEffect(() => {
   const streak = getStreak(entries)
 
 async function toggleWatched(id: number) {
-  const entry = entries.find((e) => e.id === id);
-  if (!entry) return;
+  const current = entries.find((e) => e.id === id)
+  if (!current) return
 
-  const nextWatched = !entry.watched;
-  const nextDate = nextWatched ? new Date().toISOString() : null;
+  const watched = !current.watched
+  const watchedAt = watched ? new Date().toISOString() : null
 
-  // 1. Update local UI immediately (Snappy vibe)
-  setEntries((prev) =>
-    prev.map((e) => (e.id === id ? { ...e, watched: nextWatched, watchedAt: nextDate } : e))
-  );
-
-  // 2. Push to Supabase (Sync vibe)
   await supabase.from("progress").upsert({
-    id: id,
-    watched: nextWatched,
-    watched_at: nextDate,
-  });
+    id,
+    watched,
+    watched_at: watchedAt,
+    notes: current.notes || "",
+  })
+
+  setEntries((prev) =>
+    prev.map((e) =>
+      e.id === id ? { ...e, watched, watchedAt } : e
+    )
+  )
 }
 
 async function syncFromSupabase() {
