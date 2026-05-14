@@ -19,25 +19,28 @@ import {
   Upload,
 } from "lucide-react"
 
-// ✅ FIX 1: Entry type now includes season, episode, and episodeTitle
 type Entry = {
   id: number
   title: string
   type: string
-  season: number | null
-  episode: number | null
-  episodeTitle: string | null
-  runtime: number
+
+  season?: number | null
+  episode?: number | null
+
+  runtime?: number | null
+
+  description?: string | null
+  episode_title?: string | null
+  poster?: string | null
+
   watched: boolean
   watchedAt: string | null
   notes: string
-  group: string
-  description: string
-  poster: string | null
-  order_index: number
 }
 
-function formatRuntime(minutes: number) {
+function formatRuntime(minutes?: number | null) {
+  if (!minutes) return "Unknown runtime"
+
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
 
@@ -45,12 +48,13 @@ function formatRuntime(minutes: number) {
   return `${h}h ${m}m`
 }
 
-function getStreak(entries: any[]) {
+function getStreak(entries: Entry[]) {
   const watched = entries
     .filter((e) => e.watchedAt)
     .sort(
       (a, b) =>
-        new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime()
+        new Date(b.watchedAt!).getTime() -
+        new Date(a.watchedAt!).getTime()
     )
 
   if (!watched.length) return 0
@@ -58,8 +62,8 @@ function getStreak(entries: any[]) {
   let streak = 1
 
   for (let i = 1; i < watched.length; i++) {
-    const prev = new Date(watched[i - 1].watchedAt)
-    const curr = new Date(watched[i].watchedAt)
+    const prev = new Date(watched[i - 1].watchedAt!)
+    const curr = new Date(watched[i].watchedAt!)
 
     const diff =
       (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24)
@@ -76,70 +80,86 @@ function getStreak(entries: any[]) {
 
 export default function StarWarsTracker() {
   const [entries, setEntries] = useState<Entry[]>([])
-  const [progressData, setProgressData] = useState<ReturnType<typeof calculateProgress> | null>(null)
-  const [eta, setEta] = useState<Date | null>(null)
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("all")
-  const [selectedNotes, setSelectedNotes] = useState<any>(null)
+  const [selectedNotes, setSelectedNotes] = useState<Entry | null>(null)
 
-  // ✅ FIX 2: Single useEffect, reads from watch_items (not raw CSV or "progress" table)
+  const [progressData, setProgressData] = useState<ReturnType<
+    typeof calculateProgress
+  > | null>(null)
+
+  const [eta, setEta] = useState<Date | null>(null)
+
   useEffect(() => {
     async function load() {
-      const { data, error } = await supabase
+      const { data: items } = await supabase
         .from("watch_items")
         .select("*")
-        .order("order_index", { ascending: true })
+        .order("order_index")
 
-      if (error) {
-        console.error("Failed to load watch_items:", error)
-        return
-      }
+      const { data: progress } = await supabase
+        .from("progress")
+        .select("*")
 
-      // ✅ FIX 3: Map Supabase columns to Entry fields including season/episode/episodeTitle
-      const mapped: Entry[] = (data ?? []).map((row) => ({
-        id: row.id,
-        title: row.title,
-        type: row.type,
-        season: row.season ?? null,
-        episode: row.episode ?? null,
-        // episode_title is what TMDB returns via ep.name in the sync route
-        episodeTitle: row.episode_title ?? null,
-        runtime: row.runtime ?? 0,
-        watched: row.watched ?? false,
-        watchedAt: row.watched_at ?? null,
-        notes: row.notes ?? "",
-        group: row.group ?? "",
-        description: row.description ?? "",
-        poster: row.poster ?? null,
-        order_index: row.order_index,
-      }))
+      if (!items) return
 
-      setProgressData(calculateProgress(mapped))
-      setEta(estimateFinishDate(mapped))
-      setEntries(mapped)
+      const merged: Entry[] = items.map((item: any) => {
+        const saved = progress?.find((p: any) => p.id === item.id)
+
+        return {
+          id: item.id,
+          title: item.title,
+          type: item.type,
+
+          season: item.season,
+          episode: item.episode,
+
+          runtime: item.runtime,
+          description: item.description,
+          episode_title: item.episode_title,
+          poster: item.poster,
+
+          watched: saved?.watched || false,
+          watchedAt: saved?.watched_at || null,
+          notes: saved?.notes || "",
+        }
+      })
+
+      setEntries(merged)
+      setProgressData(calculateProgress(merged))
+      setEta(estimateFinishDate(merged))
     }
 
     load()
   }, [])
 
   const totalRuntime = useMemo(
-    () => entries.reduce((acc, item) => acc + item.runtime, 0),
+    () =>
+      entries.reduce(
+        (acc: number, item: Entry) => acc + (item.runtime || 0),
+        0
+      ),
     [entries]
   )
 
   const watchedRuntime = useMemo(
     () =>
       entries
-        .filter((e) => e.watched)
-        .reduce((acc, item) => acc + item.runtime, 0),
+        .filter((e: Entry) => e.watched)
+        .reduce(
+          (acc: number, item: Entry) => acc + (item.runtime || 0),
+          0
+        ),
     [entries]
   )
 
-  const progress = totalRuntime > 0 ? Math.round((watchedRuntime / totalRuntime) * 100) : 0
+  const progress = totalRuntime
+    ? Math.round((watchedRuntime / totalRuntime) * 100)
+    : 0
 
-  const nextUp = entries.find((e) => !e.watched)
+  const nextUp = entries.find((e: Entry) => !e.watched)
 
-  const watchedEntries = entries.filter((e) => e.watched)
+  const watchedEntries = entries.filter((e: Entry) => e.watched)
 
   const avgMinutesPerDay = watchedEntries.length
     ? watchedRuntime / watchedEntries.length
@@ -158,22 +178,29 @@ export default function StarWarsTracker() {
   const streak = getStreak(entries)
 
   async function toggleWatched(id: number) {
-    const entry = entries.find((e) => e.id === id)
-    if (!entry) return
+    const current = entries.find((e) => e.id === id)
 
-    const newWatched = !entry.watched
-    const newWatchedAt = newWatched ? new Date().toISOString() : null
+    if (!current) return
 
-    await supabase.from("watch_items").update({
-      watched: newWatched,
-      watched_at: newWatchedAt,
-    }).eq("id", id)
+    const watched = !current.watched
+    const watchedAt = watched ? new Date().toISOString() : null
+
+    await supabase.from("progress").upsert({
+      id,
+      watched,
+      watched_at: watchedAt,
+      notes: current.notes || "",
+    })
 
     setEntries((prev) =>
-      prev.map((e) =>
-        e.id === id
-          ? { ...e, watched: newWatched, watchedAt: newWatchedAt }
-          : e
+      prev.map((entry) =>
+        entry.id === id
+          ? {
+              ...entry,
+              watched,
+              watchedAt,
+            }
+          : entry
       )
     )
   }
@@ -182,8 +209,12 @@ export default function StarWarsTracker() {
     setEntries((prev) =>
       prev.map((entry) => {
         if (entry.id === id) {
-          return { ...entry, notes: note }
+          return {
+            ...entry,
+            notes: note,
+          }
         }
+
         return entry
       })
     )
@@ -195,24 +226,32 @@ export default function StarWarsTracker() {
     })
 
     const url = URL.createObjectURL(blob)
+
     const a = document.createElement("a")
     a.href = url
     a.download = "starwars-progress.json"
     a.click()
   }
 
-  function importProgress(e: any) {
-    const file = e.target.files[0]
+  function importProgress(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+
     if (!file) return
 
     const reader = new FileReader()
-    reader.onload = (event: any) => {
-      setEntries(JSON.parse(event.target.result))
+
+    reader.onload = (event: ProgressEvent<FileReader>) => {
+      const result = event.target?.result
+
+      if (typeof result === "string") {
+        setEntries(JSON.parse(result))
+      }
     }
+
     reader.readAsText(file)
   }
 
-  const filteredEntries = entries.filter((entry) => {
+  const filteredEntries = entries.filter((entry: Entry) => {
     const matchesSearch = entry.title
       .toLowerCase()
       .includes(search.toLowerCase())
@@ -346,15 +385,19 @@ export default function StarWarsTracker() {
 
             {nextUp && (
               <>
-                <h3 className="text-2xl font-black mb-1">
+                <h3 className="text-2xl font-black mb-3">
                   {nextUp.title}
                 </h3>
 
-                {/* ✅ FIX 4: Show season/episode number and episode title */}
+                {nextUp.episode_title && (
+                  <p className="text-yellow-300 mb-2 text-sm">
+                    {nextUp.episode_title}
+                  </p>
+                )}
+
                 {nextUp.season && nextUp.episode && (
-                  <p className="text-yellow-400/70 text-sm mb-1">
-                    S{nextUp.season}E{nextUp.episode}
-                    {nextUp.episodeTitle ? ` — ${nextUp.episodeTitle}` : ""}
+                  <p className="text-zinc-500 mb-2 text-sm">
+                    Season {nextUp.season} • Episode {nextUp.episode}
                   </p>
                 )}
 
@@ -381,30 +424,6 @@ export default function StarWarsTracker() {
               </>
             )}
           </motion.div>
-        </div>
-
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-6">
-          <div className="flex justify-between text-sm text-zinc-400">
-            <span>Progress</span>
-            <span>{progressData?.progressPercent}%</span>
-          </div>
-
-          <div className="w-full h-2 bg-zinc-800 rounded-full mt-2">
-            <div
-              className="h-2 bg-yellow-500 rounded-full"
-              style={{ width: `${progressData?.progressPercent}%` }}
-            />
-          </div>
-
-          <div className="text-xs text-zinc-500 mt-2">
-            {Math.round((progressData?.remainingRuntime ?? 0) / 60)} hours left
-          </div>
-
-          {eta && (
-            <div className="text-xs text-zinc-500 mt-1">
-              Estimated finish: {eta.toDateString()}
-            </div>
-          )}
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -467,10 +486,16 @@ export default function StarWarsTracker() {
                       </button>
 
                       <div>
-                        <div className="flex items-center gap-3 flex-wrap mb-1">
+                        <div className="flex items-center gap-3 flex-wrap mb-2">
                           <h3 className="font-bold text-xl">
                             {entry.title}
                           </h3>
+
+                          {entry.season && entry.episode && (
+                            <span className="bg-zinc-800 px-3 py-1 rounded-full text-xs text-zinc-300">
+                              S{entry.season}E{entry.episode}
+                            </span>
+                          )}
 
                           <span className="bg-zinc-800 px-3 py-1 rounded-full text-xs text-zinc-300">
                             {entry.type}
@@ -481,11 +506,9 @@ export default function StarWarsTracker() {
                           </span>
                         </div>
 
-                        {/* ✅ FIX 4: Season/episode + episode title in each card */}
-                        {entry.season && entry.episode && (
-                          <p className="text-yellow-400/60 text-sm mb-1">
-                            S{entry.season}E{entry.episode}
-                            {entry.episodeTitle ? ` — ${entry.episodeTitle}` : ""}
+                        {entry.episode_title && (
+                          <p className="text-yellow-300 mb-2 text-sm">
+                            {entry.episode_title}
                           </p>
                         )}
 
@@ -494,8 +517,6 @@ export default function StarWarsTracker() {
                         </p>
 
                         <div className="flex items-center gap-3 flex-wrap text-sm text-zinc-500">
-                          <span>{entry.group}</span>
-
                           {entry.watchedAt && (
                             <span>
                               Watched {new Date(entry.watchedAt).toLocaleString()}
@@ -544,12 +565,6 @@ export default function StarWarsTracker() {
                     >
                       <div>
                         <p className="font-semibold">{entry.title}</p>
-                        {entry.season && entry.episode && (
-                          <p className="text-yellow-400/50 text-xs">
-                            S{entry.season}E{entry.episode}
-                            {entry.episodeTitle ? ` — ${entry.episodeTitle}` : ""}
-                          </p>
-                        )}
                         <p className="text-zinc-500 text-sm">
                           {entry.watchedAt
                             ? new Date(entry.watchedAt).toLocaleString()
@@ -558,33 +573,6 @@ export default function StarWarsTracker() {
                       </div>
 
                       <ChevronRight className="text-zinc-600" />
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6">
-              <h2 className="text-2xl font-black mb-6">Upcoming Queue</h2>
-
-              <div className="space-y-4">
-                {entries
-                  .filter((e) => !e.watched)
-                  .slice(0, 4)
-                  .map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800"
-                    >
-                      <p className="font-semibold mb-1">{entry.title}</p>
-                      {entry.season && entry.episode && (
-                        <p className="text-yellow-400/50 text-xs mb-1">
-                          S{entry.season}E{entry.episode}
-                          {entry.episodeTitle ? ` — ${entry.episodeTitle}` : ""}
-                        </p>
-                      )}
-                      <p className="text-zinc-500 text-sm">
-                        {entry.type} • {formatRuntime(entry.runtime)}
-                      </p>
                     </div>
                   ))}
               </div>
