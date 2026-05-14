@@ -330,354 +330,266 @@ function updateNote(id: number, note: string) {
     return matchesSearch
   })
 
-  return (
-    <div className="min-h-screen bg-black text-white overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,196,0,0.18),transparent_45%)]" />
+return (
+  <div className="min-h-screen text-white relative overflow-hidden bg-[#050505]">
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 md:px-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
-          <div>
-            <h1 className="text-5xl md:text-7xl font-black tracking-tight">
-              STAR WARS
-            </h1>
-            <p className="text-zinc-400 text-lg mt-2">
-              Chronological Marathon Tracker
-            </p>
-          </div>
+    {/* ambient background */}
+    <div className="absolute inset-0">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,215,0,0.15),transparent_55%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(0,180,255,0.08),transparent_60%)]" />
+      <div className="absolute inset-0 backdrop-blur-[120px]" />
+    </div>
 
-          <div className="flex gap-3 flex-wrap">
-            <button
-              onClick={exportProgress}
-              className="bg-zinc-900 border border-zinc-800 px-4 py-3 rounded-2xl flex items-center gap-2 hover:border-yellow-500 transition"
-            >
-              <Download size={18} /> Export
-            </button>
+    <div className="relative z-10 max-w-7xl mx-auto px-6 py-10">
 
-            <button
-            onClick={async () => {
-            await syncFromSupabase()
-            }}
-            className="bg-green-500/10 border border-green-500/30 px-4 py-3 rounded-2xl flex items-center gap-2 hover:border-green-400 transition"
-            >
-            Save / Sync
-            </button>
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
 
-            <label className="bg-zinc-900 border border-zinc-800 px-4 py-3 rounded-2xl flex items-center gap-2 hover:border-yellow-500 transition cursor-pointer">
-              <Upload size={18} /> Import
-              <input
-                type="file"
-                className="hidden"
-                onChange={importProgress}
-              />
-            </label>
-          </div>
+        <div>
+          <h1 className="text-6xl md:text-7xl font-black tracking-tight bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 bg-clip-text text-transparent">
+            STAR WARS
+          </h1>
+          <p className="text-zinc-400 mt-2 tracking-wide">
+            Chronological Marathon Tracker
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="lg:col-span-3 rounded-3xl border border-yellow-500/20 bg-zinc-950/70 backdrop-blur-xl p-8"
+        {/* ACTION BAR */}
+        <div className="flex gap-3 flex-wrap">
+
+          {/* EXPORT */}
+          <button
+            onClick={exportProgress}
+            className="group relative px-5 py-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl overflow-hidden transition active:scale-[0.98]"
           >
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <p className="text-zinc-400 mb-2">Overall Progress</p>
-                <h2 className="text-5xl font-black text-yellow-400">
-                  {progress}%
-                </h2>
-              </div>
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-r from-yellow-500/20 to-orange-500/10" />
+            <span className="relative flex items-center gap-2">
+              <Download size={18} /> Export
+            </span>
+          </button>
 
-              <div className="text-right">
-                <p className="text-zinc-400">Runtime Watched</p>
-                <p className="text-2xl font-bold">
-                  {formatRuntime(watchedRuntime)}
-                </p>
-              </div>
-            </div>
-
-            <div className="w-full bg-zinc-900 rounded-full h-5 overflow-hidden mb-6">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 1 }}
-                className="h-full bg-gradient-to-r from-yellow-500 to-amber-300"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-zinc-900/70 rounded-2xl p-4 border border-zinc-800">
-                <div className="flex items-center gap-2 text-zinc-400 mb-2">
-                  <Clock3 size={16} /> Remaining
-                </div>
-                <p className="font-bold text-xl">
-                  {formatRuntime(remaining)}
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/70 rounded-2xl p-4 border border-zinc-800">
-                <div className="flex items-center gap-2 text-zinc-400 mb-2">
-                  <Flame size={16} /> Streak
-                </div>
-                <p className="font-bold text-xl">{streak} days</p>
-              </div>
-
-              <div className="bg-zinc-900/70 rounded-2xl p-4 border border-zinc-800">
-                <div className="flex items-center gap-2 text-zinc-400 mb-2">
-                  <Calendar size={16} /> ETA
-                </div>
-                <p className="font-bold text-lg">
-                  {estimatedDate
-                    ? estimatedDate.toLocaleDateString()
-                    : "Not enough data"}
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/70 rounded-2xl p-4 border border-zinc-800">
-                <div className="flex items-center gap-2 text-zinc-400 mb-2">
-                  <Trophy size={16} /> Completed
-                </div>
-                <p className="font-bold text-xl">
-                  {watchedEntries.length}/{entries.length}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="rounded-3xl border border-yellow-500/20 bg-gradient-to-b from-yellow-500/10 to-zinc-950/80 p-6"
+          {/* SYNC */}
+          <button
+            onClick={async () => await syncFromSupabase()}
+            className="group relative px-5 py-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 backdrop-blur-xl overflow-hidden transition active:scale-[0.98]"
           >
-            <div className="flex items-center gap-2 mb-4 text-yellow-400 font-bold">
-              <Star size={18} /> UP NEXT
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-emerald-400/10" />
+            <span className="relative flex items-center gap-2 text-emerald-300">
+              Save / Sync
+            </span>
+          </button>
+
+          {/* IMPORT */}
+          <label className="group relative px-5 py-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl cursor-pointer overflow-hidden transition active:scale-[0.98]">
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-white/10" />
+            <span className="relative flex items-center gap-2">
+              <Upload size={18} /> Import
+            </span>
+            <input type="file" className="hidden" onChange={importProgress} />
+          </label>
+
+        </div>
+      </div>
+
+      {/* TOP GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
+
+        {/* MAIN PROGRESS */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-3 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-8 relative overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-transparent to-blue-500/10 opacity-60" />
+
+          <div className="relative flex justify-between items-start mb-8">
+            <div>
+              <p className="text-zinc-400">Overall Progress</p>
+              <h2 className="text-5xl font-black text-yellow-300">{progress}%</h2>
+            </div>
+
+            <div className="text-right">
+              <p className="text-zinc-400">Watched</p>
+              <p className="text-xl font-semibold">{formatRuntime(watchedRuntime)}</p>
+            </div>
+          </div>
+
+          {/* BAR */}
+          <div className="h-4 bg-white/5 rounded-full overflow-hidden mb-8">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 1 }}
+              className="h-full bg-gradient-to-r from-yellow-400 via-orange-400 to-amber-200"
+            />
+          </div>
+
+          {/* STATS */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+            {[
+              { icon: Clock3, label: "Remaining", value: formatRuntime(remaining) },
+              { icon: Flame, label: "Streak", value: `${streak} days` },
+              { icon: Calendar, label: "ETA", value: estimatedDate ? estimatedDate.toLocaleDateString() : "—" },
+              { icon: Trophy, label: "Done", value: `${watchedEntries.length}/${entries.length}` },
+            ].map((s, i) => (
+              <div
+                key={i}
+                className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl hover:bg-white/10 transition"
+              >
+                <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
+                  <s.icon size={16} /> {s.label}
+                </div>
+                <p className="text-lg font-bold">{s.value}</p>
+              </div>
+            ))}
+
+          </div>
+        </motion.div>
+
+        {/* NEXT UP */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-6 relative overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent" />
+
+          <div className="relative">
+            <div className="text-yellow-300 font-bold mb-4 flex items-center gap-2">
+              <Star size={16} /> Next Up
             </div>
 
             {nextUp && (
               <>
-                <h3 className="text-2xl font-black mb-3">
-                  {nextUp.title}
-                </h3>
-
-                {nextUp.episode_title && (
-                  <p className="text-yellow-300 mb-2 text-sm">
-                    {nextUp.episode_title}
-                  </p>
-                )}
-
-                {nextUp.season && nextUp.episode && (
-                  <p className="text-zinc-500 mb-2 text-sm">
-                    Season {nextUp.season} • Episode {nextUp.episode}
-                  </p>
-                )}
-
-                <p className="text-zinc-400 mb-4 text-sm leading-relaxed">
+                <h3 className="text-xl font-black mb-2">{nextUp.title}</h3>
+                <p className="text-zinc-400 text-sm mb-4 line-clamp-3">
                   {nextUp.description}
                 </p>
 
-                <div className="flex gap-2 flex-wrap mb-6">
-                  <span className="bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full text-sm">
-                    {nextUp.type}
-                  </span>
-
-                  <span className="bg-zinc-800 px-3 py-1 rounded-full text-sm">
-                    {formatRuntime(nextUp.runtime)}
-                  </span>
-                </div>
-
                 <button
                   onClick={() => toggleWatched(nextUp.id)}
-                  className="w-full bg-yellow-400 hover:bg-yellow-300 transition text-black font-black py-4 rounded-2xl"
+                  className="w-full px-4 py-3 rounded-2xl bg-gradient-to-r from-yellow-400 to-amber-300 text-black font-bold hover:scale-[1.02] active:scale-[0.98] transition"
                 >
-                  MARK AS WATCHED
+                  Mark Watched
                 </button>
               </>
             )}
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
+      </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 backdrop-blur-xl">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-              <h2 className="text-2xl font-black">Full Timeline</h2>
+      {/* LIST */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
-              <div className="flex gap-3 flex-wrap">
-                <div className="relative">
-                  <Search
-                    size={18}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
-                  />
+        <div className="xl:col-span-2 space-y-4">
 
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search"
-                    className="bg-zinc-900 border border-zinc-800 rounded-2xl pl-10 pr-4 py-3 outline-none focus:border-yellow-500"
-                  />
+          <div className="flex gap-3 mb-4">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search the saga..."
+              className="flex-1 px-4 py-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl outline-none focus:border-yellow-400"
+            />
+
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10"
+            >
+              <option value="all">All</option>
+              <option value="watched">Watched</option>
+              <option value="unwatched">Unwatched</option>
+            </select>
+          </div>
+
+          {filteredEntries.map((entry) => (
+            <motion.div
+              key={entry.id}
+              layout
+              className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-5 hover:bg-white/10 transition"
+            >
+              <div className="flex justify-between items-start gap-4">
+
+                <div className="flex gap-4">
+
+                  <button onClick={() => toggleWatched(entry.id)}>
+                    <CheckCircle2
+                      className={entry.watched ? "text-yellow-400" : "text-zinc-600"}
+                      size={28}
+                    />
+                  </button>
+
+                  <div>
+                    <h3 className="font-bold text-lg">{entry.title}</h3>
+                    <p className="text-zinc-400 text-sm">{entry.description}</p>
+
+                    {entry.watchedAt && (
+                      <p className="text-xs text-zinc-500 mt-2">
+                        Watched {new Date(entry.watchedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+
                 </div>
 
-                <select
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  className="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3 outline-none focus:border-yellow-500"
+                <button
+                  onClick={() => setSelectedNotes(entry)}
+                  className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 transition text-sm"
                 >
-                  <option value="all">All</option>
-                  <option value="watched">Watched</option>
-                  <option value="unwatched">Unwatched</option>
-                </select>
+                  Notes
+                </button>
+
               </div>
-            </div>
+            </motion.div>
+          ))}
 
-            <div className="space-y-4 max-h-[900px] overflow-y-auto pr-2">
-              {filteredEntries.map((entry) => (
-                <motion.div
-                  key={entry.id}
-                  layout
-                  className={`rounded-2xl border p-5 transition ${
-                    entry.watched
-                      ? "bg-yellow-500/10 border-yellow-500/30"
-                      : "bg-zinc-900/60 border-zinc-800"
-                  }`}
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      <button
-                        onClick={() => toggleWatched(entry.id)}
-                        className="mt-1"
-                      >
-                        <CheckCircle2
-                          className={`transition ${
-                            entry.watched
-                              ? "text-yellow-400"
-                              : "text-zinc-700"
-                          }`}
-                          size={30}
-                        />
-                      </button>
+        </div>
 
-                      <div>
-                        <div className="flex items-center gap-3 flex-wrap mb-2">
-                          <h3 className="font-bold text-xl">
-                            {entry.title}
-                          </h3>
+        {/* ACTIVITY */}
+        <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-6">
+          <h2 className="font-black text-xl mb-4">Recent Activity</h2>
 
-                          {entry.season && entry.episode && (
-                            <span className="bg-zinc-800 px-3 py-1 rounded-full text-xs text-zinc-300">
-                              S{entry.season}E{entry.episode}
-                            </span>
-                          )}
-
-                          <span className="bg-zinc-800 px-3 py-1 rounded-full text-xs text-zinc-300">
-                            {entry.type}
-                          </span>
-
-                          <span className="bg-zinc-800 px-3 py-1 rounded-full text-xs text-zinc-300">
-                            {formatRuntime(entry.runtime)}
-                          </span>
-                        </div>
-
-                        {entry.episode_title && (
-                          <p className="text-yellow-300 mb-2 text-sm">
-                            {entry.episode_title}
-                          </p>
-                        )}
-
-                        <p className="text-zinc-400 mb-3">
-                          {entry.description}
-                        </p>
-
-                        <div className="flex items-center gap-3 flex-wrap text-sm text-zinc-500">
-                          {entry.watchedAt && (
-                            <span>
-                              Watched {new Date(entry.watchedAt).toLocaleString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => setSelectedNotes(entry)}
-                        className="bg-zinc-800 hover:bg-zinc-700 transition px-4 py-2 rounded-xl text-sm"
-                      >
-                        Notes
-                      </button>
-
-                      {entry.watched && (
-                        <button
-                          onClick={() => toggleWatched(entry.id)}
-                          className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition px-4 py-2 rounded-xl text-sm flex items-center gap-2"
-                        >
-                          <Undo2 size={14} /> Undo
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6">
-              <h2 className="text-2xl font-black mb-6">Recent Activity</h2>
-
-              <div className="space-y-4">
-                {watchedEntries
-                  .slice()
-                  .reverse()
-                  .slice(0, 5)
-                  .map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex items-center justify-between border-b border-zinc-800 pb-4"
-                    >
-                      <div>
-                        <p className="font-semibold">{entry.title}</p>
-                        <p className="text-zinc-500 text-sm">
-                          {entry.watchedAt
-                            ? new Date(entry.watchedAt).toLocaleString()
-                            : "Not watched"}
-                        </p>
-                      </div>
-
-                      <ChevronRight className="text-zinc-600" />
-                    </div>
-                  ))}
+          <div className="space-y-4">
+            {watchedEntries.slice().reverse().slice(0, 5).map((e) => (
+              <div key={e.id} className="border-b border-white/5 pb-3">
+                <p className="font-semibold">{e.title}</p>
+                <p className="text-xs text-zinc-500">
+                  {e.watchedAt && new Date(e.watchedAt).toLocaleString()}
+                </p>
               </div>
-            </div>
+            ))}
           </div>
         </div>
 
-        {selectedNotes && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 w-full max-w-xl">
-              <h2 className="text-2xl font-black mb-4">
-                Notes — {selectedNotes.title}
-              </h2>
+      </div>
 
-              <textarea
-                value={selectedNotes.notes}
-                onChange={(e) =>
-                  updateNote(selectedNotes.id, e.target.value)
-                }
-                className="w-full h-40 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 outline-none focus:border-yellow-500"
-                placeholder="Write anything about your watch session..."
-              />
+      {/* MODAL */}
+      {selectedNotes && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xl flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-xl rounded-3xl bg-black/70 border border-white/10 p-6">
+            <h2 className="text-xl font-black mb-4">
+              Notes — {selectedNotes.title}
+            </h2>
 
-              <div className="flex justify-end gap-3 mt-4">
-                <button
-                  onClick={() => setSelectedNotes(null)}
-                  className="bg-zinc-800 px-5 py-3 rounded-2xl"
-                >
-                  Close
-                </button>
-              </div>
+            <textarea
+              value={selectedNotes.notes}
+              onChange={(e) => updateNote(selectedNotes.id, e.target.value)}
+              className="w-full h-40 rounded-2xl bg-white/5 border border-white/10 p-4 outline-none"
+            />
+
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setSelectedNotes(null)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition"
+              >
+                Close
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
     </div>
-  )
-}
+  </div>
+)}
