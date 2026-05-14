@@ -232,8 +232,16 @@ async function syncFromSupabase() {
 
   if (!items) return
 
+  // 🔥 build lookup map instead of .find()
+  const progressMap = new Map(
+    (progress || []).map((p: any) => [
+      String(p.id),
+      p,
+    ])
+  )
+
   const merged = items.map((item: any) => {
-    const saved = progress?.find((p: any) => p.id === item.id)
+    const saved = progressMap.get(String(item.id))
 
     return {
       id: item.id,
@@ -245,9 +253,9 @@ async function syncFromSupabase() {
       description: item.description,
       episode_title: item.episode_title,
       poster: item.poster,
-      watched: saved?.watched || false,
-      watchedAt: saved?.watched_at || null,
-      notes: saved?.notes || "",
+      watched: saved?.watched ?? false,
+      watchedAt: saved?.watched_at ?? null,
+      notes: saved?.notes ?? "",
     }
   })
 
