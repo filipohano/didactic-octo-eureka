@@ -333,7 +333,7 @@ function updateNote(id: number, note: string) {
 return (
   <div className="min-h-screen text-white relative overflow-hidden bg-[#050505]">
 
-    {/* ambient background */}
+    {/* background glow */}
     <div className="absolute inset-0">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,215,0,0.15),transparent_55%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(0,180,255,0.08),transparent_60%)]" />
@@ -349,42 +349,31 @@ return (
           <h1 className="text-6xl md:text-7xl font-black tracking-tight bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 bg-clip-text text-transparent">
             STAR WARS
           </h1>
-          <p className="text-zinc-400 mt-2 tracking-wide">
+          <p className="text-zinc-400 mt-2">
             Chronological Marathon Tracker
           </p>
         </div>
 
-        {/* ACTION BAR */}
         <div className="flex gap-3 flex-wrap">
 
-          {/* EXPORT */}
           <button
             onClick={exportProgress}
-            className="group relative px-5 py-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl overflow-hidden transition active:scale-[0.98]"
+            className="px-5 py-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition"
           >
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-r from-yellow-500/20 to-orange-500/10" />
-            <span className="relative flex items-center gap-2">
-              <Download size={18} /> Export
-            </span>
+            <Download size={18} className="inline mr-2" />
+            Export
           </button>
 
-          {/* SYNC */}
           <button
             onClick={async () => await syncFromSupabase()}
-            className="group relative px-5 py-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 backdrop-blur-xl overflow-hidden transition active:scale-[0.98]"
+            className="px-5 py-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 hover:bg-emerald-500/20 transition"
           >
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-emerald-400/10" />
-            <span className="relative flex items-center gap-2 text-emerald-300">
-              Save / Sync
-            </span>
+            Save / Sync
           </button>
 
-          {/* IMPORT */}
-          <label className="group relative px-5 py-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl cursor-pointer overflow-hidden transition active:scale-[0.98]">
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-white/10" />
-            <span className="relative flex items-center gap-2">
-              <Upload size={18} /> Import
-            </span>
+          <label className="px-5 py-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition cursor-pointer">
+            <Upload size={18} className="inline mr-2" />
+            Import
             <input type="file" className="hidden" onChange={importProgress} />
           </label>
 
@@ -398,28 +387,25 @@ return (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-3 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-8 relative overflow-hidden"
+          className="lg:col-span-3 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-8"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-transparent to-blue-500/10 opacity-60" />
 
-          <div className="relative flex justify-between items-start mb-8">
+          <div className="flex justify-between mb-8">
             <div>
               <p className="text-zinc-400">Overall Progress</p>
               <h2 className="text-5xl font-black text-yellow-300">{progress}%</h2>
             </div>
 
             <div className="text-right">
-              <p className="text-zinc-400">Watched</p>
+              <p className="text-zinc-400">Watched Runtime</p>
               <p className="text-xl font-semibold">{formatRuntime(watchedRuntime)}</p>
             </div>
           </div>
 
-          {/* BAR */}
           <div className="h-4 bg-white/5 rounded-full overflow-hidden mb-8">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              transition={{ duration: 1 }}
               className="h-full bg-gradient-to-r from-yellow-400 via-orange-400 to-amber-200"
             />
           </div>
@@ -427,56 +413,68 @@ return (
           {/* STATS */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 
-            {[
-              { icon: Clock3, label: "Remaining", value: formatRuntime(remaining) },
-              { icon: Flame, label: "Streak", value: `${streak} days` },
-              { icon: Calendar, label: "ETA", value: estimatedDate ? estimatedDate.toLocaleDateString() : "—" },
-              { icon: Trophy, label: "Done", value: `${watchedEntries.length}/${entries.length}` },
-            ].map((s, i) => (
-              <div
-                key={i}
-                className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl hover:bg-white/10 transition"
-              >
-                <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
-                  <s.icon size={16} /> {s.label}
-                </div>
-                <p className="text-lg font-bold">{s.value}</p>
+            <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
+              <div className="text-sm text-zinc-400">Remaining</div>
+              <div className="font-bold">{formatRuntime(remaining)}</div>
+            </div>
+
+            <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
+              <div className="text-sm text-zinc-400">Streak</div>
+              <div className="font-bold">{streak} days</div>
+            </div>
+
+            <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
+              <div className="text-sm text-zinc-400">ETA</div>
+              <div className="font-bold">
+                {estimatedDate ? estimatedDate.toLocaleDateString() : "—"}
               </div>
-            ))}
+            </div>
+
+            <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
+              <div className="text-sm text-zinc-400">Completed</div>
+              <div className="font-bold">
+                {watchedEntries.length}/{entries.length}
+              </div>
+            </div>
 
           </div>
         </motion.div>
 
         {/* NEXT UP */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-6 relative overflow-hidden"
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent" />
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
 
-          <div className="relative">
-            <div className="text-yellow-300 font-bold mb-4 flex items-center gap-2">
-              <Star size={16} /> Next Up
-            </div>
-
-            {nextUp && (
-              <>
-                <h3 className="text-xl font-black mb-2">{nextUp.title}</h3>
-                <p className="text-zinc-400 text-sm mb-4 line-clamp-3">
-                  {nextUp.description}
-                </p>
-
-                <button
-                  onClick={() => toggleWatched(nextUp.id)}
-                  className="w-full px-4 py-3 rounded-2xl bg-gradient-to-r from-yellow-400 to-amber-300 text-black font-bold hover:scale-[1.02] active:scale-[0.98] transition"
-                >
-                  Mark Watched
-                </button>
-              </>
-            )}
+          <div className="text-yellow-300 font-bold mb-4 flex items-center gap-2">
+            <Star size={16} /> Next Up
           </div>
-        </motion.div>
+
+          {nextUp && (
+            <>
+              <h3 className="font-black text-xl">{nextUp.title}</h3>
+
+              {nextUp.episode_title && (
+                <p className="text-yellow-200 text-sm mt-1">
+                  {nextUp.episode_title}
+                </p>
+              )}
+
+              <p className="text-xs text-zinc-400 mt-2">{nextUp.type}</p>
+
+              {nextUp.season && nextUp.episode && (
+                <p className="text-xs text-zinc-500">
+                  Season {nextUp.season} • Episode {nextUp.episode}
+                </p>
+              )}
+
+              <button
+                onClick={() => toggleWatched(nextUp.id)}
+                className="mt-4 w-full py-3 rounded-2xl bg-gradient-to-r from-yellow-400 to-amber-300 text-black font-bold"
+              >
+                Mark Watched
+              </button>
+            </>
+          )}
+        </div>
+
       </div>
 
       {/* LIST */}
@@ -484,32 +482,14 @@ return (
 
         <div className="xl:col-span-2 space-y-4">
 
-          <div className="flex gap-3 mb-4">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search the saga..."
-              className="flex-1 px-4 py-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl outline-none focus:border-yellow-400"
-            />
-
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10"
-            >
-              <option value="all">All</option>
-              <option value="watched">Watched</option>
-              <option value="unwatched">Unwatched</option>
-            </select>
-          </div>
-
           {filteredEntries.map((entry) => (
             <motion.div
               key={entry.id}
               layout
-              className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-5 hover:bg-white/10 transition"
+              className="p-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition"
             >
-              <div className="flex justify-between items-start gap-4">
+
+              <div className="flex justify-between">
 
                 <div className="flex gap-4">
 
@@ -521,37 +501,76 @@ return (
                   </button>
 
                   <div>
-                    <h3 className="font-bold text-lg">{entry.title}</h3>
-                    <p className="text-zinc-400 text-sm">{entry.description}</p>
 
-                    {entry.watchedAt && (
-                      <p className="text-xs text-zinc-500 mt-2">
-                        Watched {new Date(entry.watchedAt).toLocaleString()}
+                    <h3 className="font-bold text-lg">{entry.title}</h3>
+
+                    <div className="text-xs text-zinc-400 mt-1 space-y-1">
+
+                      {entry.episode_title && (
+                        <p className="text-yellow-200">
+                          {entry.episode_title}
+                        </p>
+                      )}
+
+                      <p>
+                        {entry.type}
+                        {entry.runtime ? ` • ${formatRuntime(entry.runtime)}` : ""}
                       </p>
-                    )}
+
+                      {entry.season && entry.episode && (
+                        <p>
+                          Season {entry.season} • Episode {entry.episode}
+                        </p>
+                      )}
+
+                      {entry.watchedAt && (
+                        <p>
+                          Watched {new Date(entry.watchedAt).toLocaleString()}
+                        </p>
+                      )}
+
+                    </div>
+
                   </div>
 
                 </div>
 
-                <button
-                  onClick={() => setSelectedNotes(entry)}
-                  className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 transition text-sm"
-                >
-                  Notes
-                </button>
+                {/* ACTIONS */}
+                <div className="flex gap-2 items-start">
+
+                  <button
+                    onClick={() => setSelectedNotes(entry)}
+                    className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-sm"
+                  >
+                    Notes
+                  </button>
+
+                  {/* ✅ UNDO BUTTON BACK */}
+                  {entry.watched && (
+                    <button
+                      onClick={() => toggleWatched(entry.id)}
+                      className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-sm"
+                    >
+                      Undo
+                    </button>
+                  )}
+
+                </div>
 
               </div>
+
             </motion.div>
           ))}
 
         </div>
 
         {/* ACTIVITY */}
-        <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-6">
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+
           <h2 className="font-black text-xl mb-4">Recent Activity</h2>
 
-          <div className="space-y-4">
-            {watchedEntries.slice().reverse().slice(0, 5).map((e) => (
+          <div className="space-y-3">
+            {watchedEntries.slice().reverse().slice(0, 6).map((e) => (
               <div key={e.id} className="border-b border-white/5 pb-3">
                 <p className="font-semibold">{e.title}</p>
                 <p className="text-xs text-zinc-500">
@@ -560,14 +579,17 @@ return (
               </div>
             ))}
           </div>
+
         </div>
 
       </div>
 
-      {/* MODAL */}
+      {/* NOTES MODAL */}
       {selectedNotes && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xl flex items-center justify-center p-4 z-50">
+
           <div className="w-full max-w-xl rounded-3xl bg-black/70 border border-white/10 p-6">
+
             <h2 className="text-xl font-black mb-4">
               Notes — {selectedNotes.title}
             </h2>
@@ -575,17 +597,18 @@ return (
             <textarea
               value={selectedNotes.notes}
               onChange={(e) => updateNote(selectedNotes.id, e.target.value)}
-              className="w-full h-40 rounded-2xl bg-white/5 border border-white/10 p-4 outline-none"
+              className="w-full h-40 rounded-2xl bg-white/5 border border-white/10 p-4"
             />
 
             <div className="flex justify-end mt-4">
               <button
                 onClick={() => setSelectedNotes(null)}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition"
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20"
               >
                 Close
               </button>
             </div>
+
           </div>
         </div>
       )}
