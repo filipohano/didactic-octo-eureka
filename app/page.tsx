@@ -219,6 +219,40 @@ async function toggleWatched(id: number) {
   });
 }
 
+async function syncFromSupabase() {
+  const { data: items } = await supabase
+    .from("watch_items")
+    .select("*")
+    .order("order_index")
+
+  const { data: progress } = await supabase
+    .from("progress")
+    .select("*")
+
+  if (!items) return
+
+  const merged = items.map((item: any) => {
+    const saved = progress?.find((p: any) => p.id === item.id)
+
+    return {
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      season: item.season,
+      episode: item.episode,
+      runtime: item.runtime,
+      description: item.description,
+      episode_title: item.episode_title,
+      poster: item.poster,
+      watched: saved?.watched || false,
+      watchedAt: saved?.watched_at || null,
+      notes: saved?.notes || "",
+    }
+  })
+
+  setEntries(merged)
+}
+
 function updateNote(id: number, note: string) {
   // Update UI immediately for that "snappy" feeling
   setEntries((prev) =>
@@ -309,7 +343,14 @@ function updateNote(id: number, note: string) {
               <Download size={18} /> Export
             </button>
 
-            <SyncButton />
+            <button
+            onClick={async () => {
+            await syncFromSupabase()
+            }}
+            className="bg-green-500/10 border border-green-500/30 px-4 py-3 rounded-2xl flex items-center gap-2 hover:border-green-400 transition"
+            >
+            Save / Sync
+            </button>
 
             <label className="bg-zinc-900 border border-zinc-800 px-4 py-3 rounded-2xl flex items-center gap-2 hover:border-yellow-500 transition cursor-pointer">
               <Upload size={18} /> Import
